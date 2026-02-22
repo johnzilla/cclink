@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-22)
 ## Current Position
 
 Phase: 6 of 9 (Signed Record Format)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-02-22 — v1.1 roadmap created (phases 6-9)
+Plan: 1 of 2 complete
+Status: In progress
+Last activity: 2026-02-22 — 06-01 complete (signed record format v1.1 — burn+recipient in signed envelope)
 
-Progress: [██░░░░░░░░] ~22% (v1.0 complete, v1.1 not started)
+Progress: [███░░░░░░░] ~27% (v1.0 complete, 06-01 complete)
 
 ## Performance Metrics
 
@@ -48,6 +48,9 @@ v1.1 decisions:
 - Clean break on signed metadata — no v1/v2 version negotiation (v1.0 records expire via TTL)
 - --burn + --share mutually exclusive (CLI error, not silent skip)
 - SEC-03 PIN mode is real feature (earlier deferral reversed)
+- HandoffRecordSignable v1.1: burn and recipient now in signed envelope (SEC-01 complete)
+- Field order: blob, burn, created_at, hostname, project, pubkey, recipient, ttl (alphabetical, enforced by struct declaration order)
+- check_key_permissions integrated into load_keypair — enforces 0600 at read time (SEC-02)
 
 ### Pending Todos
 
@@ -62,5 +65,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: v1.1 roadmap created, phases 6-9 defined
+Stopped at: Completed 06-01-PLAN.md (signed record format v1.1)
 Resume file: None
