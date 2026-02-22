@@ -5,33 +5,34 @@
 See: .planning/PROJECT.md (updated 2026-02-21)
 
 **Core value:** Effortless, secure session handoff between devices: `cclink` on one machine, `cclink pickup` on another, you're back in your session.
-**Current focus:** Phase 1 complete — Phase 2 (Transport) next
+**Current focus:** Phase 2 (Crypto and Transport) — Plan 1 of 3 complete
 
 ## Current Position
 
-Phase: 1 of 5 (Foundation and Key Management) — COMPLETE
-Plan: 2 of 2 in current phase — COMPLETE
-Status: Ready for Phase 2
-Last activity: 2026-02-22 — Plan 01-02 complete (cclink whoami with clipboard support)
+Phase: 2 of 5 (Crypto and Transport) — In Progress
+Plan: 1 of 3 in current phase — COMPLETE
+Status: Ready for Plan 02-02
+Last activity: 2026-02-22 — Plan 02-01 complete (crypto module: Ed25519-to-X25519 key derivation and age encrypt/decrypt)
 
-Progress: [██░░░░░░░░] 20%
+Progress: [████░░░░░░] 33%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: 2.5 min
-- Total execution time: 5 min
+- Total plans completed: 3
+- Average duration: 2.33 min
+- Total execution time: 8 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation-and-key-management | 2 | 5 min | 2.5 min |
+| 02-crypto-and-transport | 1 | 3 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 2.5 min
-- Trend: —
+- Last 5 plans: 2.33 min
+- Trend: stable
 
 *Updated after each plan completion*
 
@@ -50,6 +51,9 @@ Recent decisions affecting current work:
 - Homeserver stored as plain text at ~/.pubky/cclink_homeserver — read by whoami and later phases (01-01)
 - arboard 3.6 for clipboard; graceful fallback via match on Clipboard::new() — never unwrap in clipboard ops (01-02)
 - try_copy_to_clipboard returns bool — clean separation of clipboard attempt from display logic (01-02)
+- ed25519-dalek must be listed explicitly in Cargo.toml even though it is a pkarr transitive dep — Rust requires direct Cargo.toml declaration for direct crate imports (02-01)
+- reqwest 0.13 feature name is 'rustls' not 'rustls-tls' (renamed in the 0.13 release) (02-01)
+- curve25519-dalek 4 (age) and 5-pre.6 (pkarr) coexist safely — convert at [u8; 32] boundary only; never pass types between them (02-01)
 
 ### Pending Todos
 
@@ -63,5 +67,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 01-02-PLAN.md (cclink whoami with clipboard support, full init+whoami round-trip verified)
+Stopped at: Completed 02-01-PLAN.md (crypto module: Ed25519-to-X25519 key derivation and age encrypt/decrypt, all 5 tests pass)
 Resume file: None
