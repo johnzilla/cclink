@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-21)
 
 **Core value:** Effortless, secure session handoff between devices: `cclink` on one machine, `cclink pickup` on another, you're back in your session.
-**Current focus:** Phase 4 (Advanced Encryption and Management) — In Progress (1 of 3 plans done)
+**Current focus:** Phase 4 (Advanced Encryption and Management) — In Progress (3 of 3 plans done)
 
 ## Current Position
 
-Phase: 4 of 5 (Advanced Encryption and Management) — In Progress
-Plan: 1 of 3 in current phase — COMPLETE
-Status: Ready for Plans 04-02 and 04-03 (can run in parallel)
-Last activity: 2026-02-22 — Plan 04-01 complete (Phase 4 primitives: HandoffRecord extended, recipient_from_z32, delete/list transport methods, CLI --share/--burn/list/revoke)
+Phase: 4 of 5 (Advanced Encryption and Management) — In Progress (04-02 parallel, verify status)
+Plan: 3 of 3 in current phase — COMPLETE
+Status: Plans 04-01 and 04-03 complete; 04-02 (share/burn encryption) status unknown — may be parallel
+Last activity: 2026-02-22 — Plan 04-03 complete (cclink list with comfy-table, cclink revoke with confirmation prompts, 34 tests pass)
 
-Progress: [█████████░] 80%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
@@ -38,6 +38,7 @@ Progress: [█████████░] 80%
 *Updated after each plan completion*
 | Phase 03-core-commands P04 | 2 | 2 tasks | 3 files |
 | Phase 04-advanced-encryption-and-management P01 | 4 | 3 tasks | 9 files |
+| Phase 04-advanced-encryption-and-management P03 | 3 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,8 @@ Recent decisions affecting current work:
 - [Phase 04-advanced-encryption-and-management]: list_record_tokens uses parse::<u64>().is_ok() filter to exclude latest LatestPointer key from results
 - [Phase 04-advanced-encryption-and-management]: delete_record treats 404 as success — idempotent deletion for burn-after-read and revoke flows
 - [Phase 04-advanced-encryption-and-management]: recipient_from_z32 reuses existing age_recipient() + pkarr PublicKey::try_from path — no new crypto deps needed
+- [Phase 04-advanced-encryption-and-management]: human_duration is module-private in each command file (list.rs, pickup.rs) — not shared, per plan spec
+- [Phase 04-advanced-encryption-and-management]: Corrupt record in single-token revoke path uses delete-anyway prompt rather than hard-fail
 
 ### Pending Todos
 
@@ -92,5 +95,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 04-01-PLAN.md (Phase 4 primitives: HandoffRecord extended, recipient_from_z32, delete_record, list_record_tokens, CLI --share/--burn/list/revoke, 30 tests pass)
+Stopped at: Completed 04-03-PLAN.md (cclink list with comfy-table, cclink revoke with single/batch confirmation prompts, 34 tests pass)
 Resume file: None
