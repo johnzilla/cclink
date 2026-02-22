@@ -20,7 +20,7 @@ pub struct Cli {
     pub share: Option<String>,
 
     /// Mark as burn-after-read (deleted after first successful pickup)
-    #[arg(long)]
+    #[arg(long, conflicts_with = "share")]
     pub burn: bool,
 
     #[command(subcommand)]
