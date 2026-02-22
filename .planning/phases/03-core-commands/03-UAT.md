@@ -1,9 +1,9 @@
 ---
-status: complete
+status: resolved
 phase: 03-core-commands
 source: 03-01-SUMMARY.md, 03-02-SUMMARY.md, 03-03-SUMMARY.md
 started: 2026-02-22T14:10:00Z
-updated: 2026-02-22T14:10:00Z
+updated: 2026-02-22T17:00:00Z
 ---
 
 ## Current Test
@@ -82,20 +82,52 @@ skipped: 6
 ## Gaps
 
 - truth: "CLI help text mentions Claude Code so users understand what sessions are being handed off"
-  status: failed
+  status: resolved
   reason: "User reported: help strings should explicitly mention or refer to Claude Code — applies to top-level about, pickup description, and other user-facing text"
   severity: minor
   test: 2, 3
-  root_cause: ""
-  artifacts: []
-  missing: []
+  root_cause: >
+    All user-facing help strings in src/cli.rs omit any reference to Claude Code.
+    Specifically:
+    (1) The top-level `about` string (line 4) reads "Secure session handoff via Pubky" — no mention of what is being handed off.
+    (2) The SESSION_ID positional arg doc (line 7) says "Optional session ID to publish (auto-discovers most recent if omitted)" without clarifying it is a Claude Code session ID.
+    (3) The `Pickup` subcommand doc (line 29) reads "Pick up a session handoff from the homeserver" without naming Claude Code.
+    (4) The PUBKEY positional arg doc on PickupArgs (line 49) has no Claude Code context.
+    Clap renders all of these strings verbatim in --help output, so users see no indication that the tool is specifically for Claude Code sessions.
+  artifacts:
+    - "src/cli.rs:4  — `about` on the top-level Cli struct"
+    - "src/cli.rs:7  — doc comment for `session_id` field (SESSION_ID positional arg)"
+    - "src/cli.rs:29 — doc comment for the `Pickup` variant in the Commands enum"
+    - "src/cli.rs:49 — doc comment for `pubkey` field in PickupArgs (PUBKEY positional arg)"
+  missing:
+    - "Each of the four strings above needs 'Claude Code' inserted so users understand the context. Suggested rewrites: about → 'Hand off a Claude Code session to another machine via Pubky'; SESSION_ID → 'Claude Code session ID to publish (auto-discovers most recent if omitted)'; Pickup variant → 'Pick up a Claude Code session handoff from the homeserver'; PUBKEY → 'z32-encoded public key of the Claude Code session publisher (defaults to own key)'."
   debug_session: ""
 - truth: "Session discovery filters to sessions matching the current working directory; shows no-session error when no matching sessions exist"
-  status: failed
+  status: resolved
   reason: "User reported: discover_sessions() returns ALL sessions across all projects within 24h regardless of cwd. Running from ~/vault still shows sessions from other projects instead of 'no session found' error."
   severity: major
   test: 4
-  root_cause: ""
-  artifacts: []
-  missing: []
+  root_cause: >
+    src/session/mod.rs: discover_sessions() (line 16) accepts no arguments and applies
+    no current-directory filter. It reads every JSONL file under ~/.claude/projects/ that
+    is newer than 24 h and returns all of them. The per-session cwd is read from each
+    JSONL file by read_session_cwd() and stored in SessionInfo.project (lines 65-70),
+    but that value is never compared against std::env::current_dir().
+
+    src/commands/publish.rs: run_publish() calls discover_sessions() at line 33 and
+    immediately dispatches on the length of the unfiltered list (0 / 1 / many). There
+    is no post-filter step that narrows the list to sessions whose SessionInfo.project
+    matches (or is a prefix of) the current working directory before the dispatch.
+    Consequently, a user running cclink from ~/vault receives a multi-session picker
+    populated with sessions from completely unrelated projects instead of the
+    "No Claude Code session found" error that the spec requires.
+  artifacts:
+    - "src/session/mod.rs:16 — discover_sessions() signature and body — no cwd parameter, no filter"
+    - "src/session/mod.rs:65-70 — SessionInfo is populated with project cwd but never filtered against caller cwd"
+    - "src/commands/publish.rs:33 — discover_sessions() called without any cwd argument"
+    - "src/commands/publish.rs:34-68 — match on sessions.len() operates on the unfiltered full list"
+  missing:
+    - "discover_sessions() should accept an optional cwd: Option<&Path> parameter (or discover_sessions_for(cwd) variant) and, when cwd is Some, retain only sessions whose SessionInfo.project starts with (or equals) the canonical cwd string."
+    - "run_publish() should pass std::env::current_dir() into discover_sessions() so that the returned list is already scoped to the current project before the 0/1/many dispatch."
+    - "The existing unit test in src/session/mod.rs only checks that discover_sessions() returns Ok — a new test should verify that sessions with a non-matching project path are excluded when a cwd filter is applied."
   debug_session: ""
