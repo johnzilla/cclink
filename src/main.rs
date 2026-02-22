@@ -4,6 +4,7 @@ mod crypto;
 mod error;
 mod keys;
 mod record;
+mod session;
 mod transport;
 
 use clap::Parser;
