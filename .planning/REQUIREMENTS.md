@@ -25,7 +25,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **PUB-02**: Handoff record includes hostname, project path, creation timestamp, and TTL
 - [x] **PUB-03**: Session ID is age-encrypted to the creator's own X25519 key (derived from Ed25519)
 - [ ] **PUB-04**: User can set a custom TTL via `--ttl` (default 8 hours)
-- [ ] **PUB-05**: A `latest.json` pointer is updated on each publish
+- [x] **PUB-05**: A `latest.json` pointer is updated on each publish
 - [ ] **PUB-06**: Terminal QR code is rendered after successful publish
 
 ### Retrieval
@@ -102,7 +102,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PUB-02 | Phase 2 | Complete |
 | PUB-03 | Phase 2 | Complete |
 | PUB-04 | Phase 3 | Pending |
-| PUB-05 | Phase 2 | Pending |
+| PUB-05 | Phase 2 | Complete |
 | PUB-06 | Phase 3 | Pending |
 | RET-01 | Phase 3 | Pending |
 | RET-02 | Phase 3 | Pending |
