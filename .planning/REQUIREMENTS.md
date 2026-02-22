@@ -30,12 +30,12 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Retrieval
 
-- [ ] **RET-01**: User can retrieve and decrypt their own latest handoff via `cclink pickup`
-- [ ] **RET-02**: User can retrieve another user's latest handoff via `cclink pickup <pubkey>`
-- [ ] **RET-03**: Expired records (past TTL) are refused on retrieval
-- [ ] **RET-04**: User can auto-execute `claude --resume <id>` via `cclink pickup --exec`
-- [ ] **RET-05**: User can display a scannable QR code via `cclink pickup --qr`
-- [ ] **RET-06**: Retrieval retries with backoff to handle DHT propagation delay
+- [x] **RET-01**: User can retrieve and decrypt their own latest handoff via `cclink pickup`
+- [x] **RET-02**: User can retrieve another user's latest handoff via `cclink pickup <pubkey>`
+- [x] **RET-03**: Expired records (past TTL) are refused on retrieval
+- [x] **RET-04**: User can auto-execute `claude --resume <id>` via `cclink pickup --exec`
+- [x] **RET-05**: User can display a scannable QR code via `cclink pickup --qr`
+- [x] **RET-06**: Retrieval retries with backoff to handle DHT propagation delay
 
 ### Advanced Encryption
 
@@ -104,12 +104,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PUB-04 | Phase 3 | Complete |
 | PUB-05 | Phase 2 | Complete |
 | PUB-06 | Phase 3 | Complete |
-| RET-01 | Phase 3 | Pending |
-| RET-02 | Phase 3 | Pending |
-| RET-03 | Phase 3 | Pending |
-| RET-04 | Phase 3 | Pending |
-| RET-05 | Phase 3 | Pending |
-| RET-06 | Phase 3 | Pending |
+| RET-01 | Phase 3 | Complete |
+| RET-02 | Phase 3 | Complete |
+| RET-03 | Phase 3 | Complete |
+| RET-04 | Phase 3 | Complete |
+| RET-05 | Phase 3 | Complete |
+| RET-06 | Phase 3 | Complete |
 | ENC-01 | Phase 4 | Pending |
 | ENC-02 | Phase 4 | Pending |
 | MGT-01 | Phase 4 | Pending |

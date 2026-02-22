@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-21)
 
 **Core value:** Effortless, secure session handoff between devices: `cclink` on one machine, `cclink pickup` on another, you're back in your session.
-**Current focus:** Phase 3 (Core Commands) — IN PROGRESS (2 of 3 plans done)
+**Current focus:** Phase 3 (Core Commands) — COMPLETE (3 of 3 plans done)
 
 ## Current Position
 
-Phase: 3 of 5 (Core Commands) — IN PROGRESS
-Plan: 2 of 3 in current phase — COMPLETE
-Status: Ready for Plan 03-03 (pickup command)
-Last activity: 2026-02-22 — Plan 03-02 complete (CLI restructure + publish command: session discovery, age encrypt, record sign, homeserver upload, colored output, --qr, 22 tests pass)
+Phase: 3 of 5 (Core Commands) — COMPLETE
+Plan: 3 of 3 in current phase — COMPLETE
+Status: Ready for Phase 4 (Advanced Encryption)
+Last activity: 2026-02-22 — Plan 03-03 complete (pickup command: retrieval, TTL, age decrypt, confirm, exec, 26 tests pass)
 
-Progress: [████████░░] 72%
+Progress: [█████████░] 80%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
-- Average duration: 2.2 min
-- Total execution time: 14 min
+- Total plans completed: 7
+- Average duration: 2.3 min
+- Total execution time: 16 min
 
 **By Phase:**
 
@@ -29,7 +29,7 @@ Progress: [████████░░] 72%
 |-------|-------|-------|----------|
 | 01-foundation-and-key-management | 2 | 5 min | 2.5 min |
 | 02-crypto-and-transport | 3 | 9 min | 3 min |
-| 03-core-commands | 2 | 4 min | 2 min |
+| 03-core-commands | 3 | 6 min | 2 min |
 
 **Recent Trend:**
 - Last 5 plans: 2.2 min
@@ -68,6 +68,9 @@ Recent decisions affecting current work:
 - [Phase 03-core-commands]: SessionInfo derives Debug — required for test assertions with {:?} format (03-01)
 - [Phase 03-core-commands]: owo_colors chained methods (.green().bold()) return references to temporaries — use single color method per if_supports_color call (03-02)
 - [Phase 03-core-commands]: Publish path uses only ed25519_to_x25519_public (recipient); ed25519_to_x25519_secret only needed for decrypt in pickup (03-02)
+- [Phase 03-core-commands]: Self-pickup signs in via session cookie; cross-user uses public multi-tenant path without sign-in (03-03)
+- [Phase 03-core-commands]: Retry wraps full get_latest+get_record sequence; 404/not-found are permanent errors; network failures are transient (03-03)
+- [Phase 03-core-commands]: launch_claude_resume() uses Unix exec() to replace cclink process; non-Unix falls back to status() wait (03-03)
 
 ### Pending Todos
 
@@ -81,5 +84,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 03-02-PLAN.md (CLI restructure + publish command: session discovery, age encrypt, record sign, homeserver upload, colored output, --qr, 22 tests pass)
+Stopped at: Completed 03-03-PLAN.md (pickup command: retrieval, TTL, age decrypt, confirm, exec, 26 tests pass — Phase 3 complete)
 Resume file: None
