@@ -15,6 +15,14 @@ pub struct Cli {
     #[arg(long)]
     pub qr: bool,
 
+    /// Encrypt for a specific recipient's z32-encoded public key
+    #[arg(long, value_name = "PUBKEY")]
+    pub share: Option<String>,
+
+    /// Mark as burn-after-read (deleted after first successful pickup)
+    #[arg(long)]
+    pub burn: bool,
+
     #[command(subcommand)]
     pub command: Option<Commands>,
 }
@@ -27,6 +35,10 @@ pub enum Commands {
     Whoami,
     /// Pick up a Claude Code session handoff from the homeserver
     Pickup(PickupArgs),
+    /// List all active handoff records on the homeserver
+    List,
+    /// Revoke (delete) a handoff record from the homeserver
+    Revoke(RevokeArgs),
 }
 
 #[derive(Parser)]
@@ -57,4 +69,19 @@ pub struct PickupArgs {
     /// Render a QR code showing the session ID
     #[arg(long)]
     pub qr: bool,
+}
+
+#[derive(Parser)]
+pub struct RevokeArgs {
+    /// Token of the handoff to revoke
+    #[arg(value_name = "TOKEN")]
+    pub token: Option<String>,
+
+    /// Revoke all active handoffs
+    #[arg(long)]
+    pub all: bool,
+
+    /// Skip confirmation prompt
+    #[arg(long, short = 'y')]
+    pub yes: bool,
 }

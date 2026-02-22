@@ -17,6 +17,8 @@ fn main() -> anyhow::Result<()> {
         Some(Commands::Init(args)) => commands::init::run_init(args)?,
         Some(Commands::Whoami) => commands::whoami::run_whoami()?,
         Some(Commands::Pickup(args)) => commands::pickup::run_pickup(args)?,
+        Some(Commands::List) => commands::list::run_list()?,
+        Some(Commands::Revoke(args)) => commands::revoke::run_revoke(args)?,
         None => commands::publish::run_publish(&cli)?,
     }
 
