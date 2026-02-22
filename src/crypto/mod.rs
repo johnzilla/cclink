@@ -206,4 +206,76 @@ mod tests {
             err_str
         );
     }
+
+    // ── PIN key derivation tests ─────────────────────────────────────────────
+
+    #[test]
+    fn test_pin_derive_key_deterministic() {
+        // Same PIN + same salt must always produce the same 32-byte key
+        let salt = [1u8; 32];
+        let key1 = pin_derive_key("1234", &salt).expect("pin_derive_key should succeed");
+        let key2 = pin_derive_key("1234", &salt).expect("pin_derive_key should succeed");
+        assert_eq!(key1, key2, "same PIN + salt must produce identical keys");
+        assert_eq!(key1.len(), 32, "derived key must be 32 bytes");
+        assert_ne!(key1, [0u8; 32], "derived key must not be all zeros");
+    }
+
+    #[test]
+    fn test_pin_derive_key_different_pins_produce_different_keys() {
+        // Different PINs with the same salt must produce different keys
+        let salt = [1u8; 32];
+        let key_1234 = pin_derive_key("1234", &salt).expect("pin_derive_key should succeed for 1234");
+        let key_5678 = pin_derive_key("5678", &salt).expect("pin_derive_key should succeed for 5678");
+        assert_ne!(key_1234, key_5678, "different PINs must produce different keys");
+    }
+
+    #[test]
+    fn test_pin_derive_key_different_salts_produce_different_keys() {
+        // Same PIN with different salts must produce different keys
+        let salt_a = [1u8; 32];
+        let salt_b = [2u8; 32];
+        let key_a = pin_derive_key("1234", &salt_a).expect("pin_derive_key should succeed for salt_a");
+        let key_b = pin_derive_key("1234", &salt_b).expect("pin_derive_key should succeed for salt_b");
+        assert_ne!(key_a, key_b, "different salts must produce different keys");
+    }
+
+    #[test]
+    fn test_pin_encrypt_decrypt_round_trip() {
+        // Encrypt with a PIN, decrypt with the same PIN and returned salt
+        let plaintext = b"session-id-abc123";
+        let (ciphertext, salt) = pin_encrypt(plaintext, "1234").expect("pin_encrypt should succeed");
+        assert!(!ciphertext.is_empty(), "ciphertext must not be empty");
+
+        let decrypted = pin_decrypt(&ciphertext, "1234", &salt).expect("pin_decrypt should succeed with correct PIN");
+        assert_eq!(decrypted, plaintext, "decrypted plaintext must match original");
+    }
+
+    #[test]
+    fn test_pin_decrypt_wrong_pin_fails() {
+        // Decrypting with the wrong PIN must return an error, not a panic or wrong result
+        let plaintext = b"session-id-abc123";
+        let (ciphertext, salt) = pin_encrypt(plaintext, "1234").expect("pin_encrypt should succeed");
+
+        let result = pin_decrypt(&ciphertext, "9999", &salt);
+        assert!(result.is_err(), "pin_decrypt with wrong PIN must return an error");
+    }
+
+    #[test]
+    fn test_owner_keypair_cannot_decrypt_pin_encrypted_data() {
+        // The owner's X25519 identity (from Ed25519 keypair) must not be able to decrypt
+        // data that was encrypted with a PIN-derived key
+        let plaintext = b"session-id-abc123";
+        let (ciphertext, _salt) = pin_encrypt(plaintext, "1234").expect("pin_encrypt should succeed");
+
+        // Try to decrypt with a regular Ed25519-derived identity
+        let keypair = fixed_keypair();
+        let secret = ed25519_to_x25519_secret(&keypair);
+        let identity = age_identity(&secret);
+
+        let result = age_decrypt(&ciphertext, &identity);
+        assert!(
+            result.is_err(),
+            "owner keypair alone must not be able to decrypt PIN-encrypted data"
+        );
+    }
 }
