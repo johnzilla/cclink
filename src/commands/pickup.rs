@@ -2,8 +2,12 @@
 /// signature, checks TTL, decrypts the session ID, shows a confirmation prompt,
 /// and execs `claude --resume`.
 ///
-/// Self-pickup (no pubkey arg): decrypts with own key, shows confirmation, execs claude.
-/// Cross-user pickup (pubkey arg): cannot decrypt — shows cleartext metadata and exits.
+/// Self-pickup (no pubkey arg): decrypts with own key. Shows error if record was
+/// encrypted for a different recipient (--share record).
+/// Cross-user pickup (pubkey arg): attempts decryption with own key. On success,
+/// record was shared with us. On failure, shows cleartext metadata and exits.
+/// Burn-after-read: on self-pickup of a --burn record, DELETE is called after
+/// successful decryption and before exec.
 use std::io::IsTerminal;
 use std::time::SystemTime;
 
@@ -148,44 +152,108 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
         );
     }
 
-    // ── 4. Decrypt (self) or show metadata (cross-user) ───────────────────
+    // ── 4. Decrypt or show metadata ───────────────────────────────────────
     let age_secs = now_secs.saturating_sub(record.created_at);
     let human_age = human_duration(age_secs);
 
+    // Derive token from created_at (matches transport publish() convention)
+    let token = record.created_at.to_string();
+
+    let session_id: String;
+
     if is_cross_user {
-        // Cross-user: cannot decrypt, show cleartext metadata
-        println!(
-            "Handoff from {}",
-            record.pubkey.if_supports_color(Stdout, |t| t.cyan())
-        );
-        println!(
-            "  Host: {}",
-            record.hostname.if_supports_color(Stdout, |t| t.cyan())
-        );
-        println!(
-            "  Project: {}",
-            record.project.if_supports_color(Stdout, |t| t.cyan())
-        );
-        println!("  Created: {} ago", human_age);
-        println!(
-            "{}",
-            "Decryption requires the creator's key. Use `--share` for shared handoffs (Phase 4)."
-                .if_supports_color(Stdout, |t| t.yellow())
-        );
-        return Ok(());
+        // Cross-user pickup: attempt decryption with own key.
+        // If the record was encrypted for us (--share), decryption succeeds.
+        // If not (self-encrypted or shared with someone else), show metadata.
+        let ciphertext = base64::engine::general_purpose::STANDARD
+            .decode(&record.blob)
+            .map_err(|e| anyhow::anyhow!("failed to decode blob: {}", e))?;
+        let x25519_secret = crate::crypto::ed25519_to_x25519_secret(&keypair);
+        let identity = crate::crypto::age_identity(&x25519_secret);
+
+        match crate::crypto::age_decrypt(&ciphertext, &identity) {
+            Ok(plaintext) => {
+                // Decryption succeeded — this record was shared with us
+                session_id = String::from_utf8(plaintext)
+                    .map_err(|e| anyhow::anyhow!("session ID is not valid UTF-8: {}", e))?;
+            }
+            Err(_) => {
+                // Cannot decrypt — show cleartext metadata
+                println!(
+                    "Handoff from {}",
+                    record.pubkey.if_supports_color(Stdout, |t| t.cyan())
+                );
+                println!(
+                    "  Host: {}",
+                    record.hostname.if_supports_color(Stdout, |t| t.cyan())
+                );
+                println!(
+                    "  Project: {}",
+                    record.project.if_supports_color(Stdout, |t| t.cyan())
+                );
+                println!("  Created: {} ago", human_age);
+                if record.recipient.is_some() {
+                    println!(
+                        "{}",
+                        "This handoff was encrypted for a specific recipient. Your key cannot decrypt it."
+                            .if_supports_color(Stdout, |t| t.yellow())
+                    );
+                } else {
+                    println!(
+                        "{}",
+                        "This handoff is self-encrypted. Only the publisher can decrypt it."
+                            .if_supports_color(Stdout, |t| t.yellow())
+                    );
+                }
+                return Ok(());
+            }
+        }
+    } else {
+        // Self-pickup path
+
+        // Check if this is the publisher's own --share record (encrypted for a different recipient)
+        if let Some(ref intended_recipient) = record.recipient {
+            // Publisher trying to pick up their own --share record — cannot decrypt
+            eprintln!(
+                "{}",
+                format!(
+                    "Error: This handoff was shared with {}. Only the recipient can decrypt it.",
+                    intended_recipient
+                )
+                .if_supports_color(Stdout, |t| t.red())
+            );
+            println!("  Host: {}", record.hostname);
+            println!("  Project: {}", record.project);
+            println!("  Created: {} ago", human_age);
+            return Ok(());
+        }
+
+        // Self-encrypt path: decrypt with own key
+        let ciphertext = base64::engine::general_purpose::STANDARD
+            .decode(&record.blob)
+            .map_err(|e| anyhow::anyhow!("failed to decode blob: {}", e))?;
+        let x25519_secret = crate::crypto::ed25519_to_x25519_secret(&keypair);
+        let identity = crate::crypto::age_identity(&x25519_secret);
+        let plaintext = crate::crypto::age_decrypt(&ciphertext, &identity)?;
+        session_id = String::from_utf8(plaintext)
+            .map_err(|e| anyhow::anyhow!("session ID is not valid UTF-8: {}", e))?;
     }
 
-    // Self-pickup: decrypt the session ID
-    let ciphertext = base64::engine::general_purpose::STANDARD
-        .decode(&record.blob)
-        .map_err(|e| anyhow::anyhow!("failed to decode blob: {}", e))?;
-    let x25519_secret = crate::crypto::ed25519_to_x25519_secret(&keypair);
-    let identity = crate::crypto::age_identity(&x25519_secret);
-    let plaintext = crate::crypto::age_decrypt(&ciphertext, &identity)?;
-    let session_id = String::from_utf8(plaintext)
-        .map_err(|e| anyhow::anyhow!("session ID is not valid UTF-8: {}", e))?;
+    // ── 5. Burn-after-read (ENC-02) ───────────────────────────────────────
+    // Only attempt DELETE on self-pickup: we have auth (session cookie from signin above).
+    // Cross-user pickup cannot auth to delete the publisher's record.
+    // DELETE must happen BEFORE exec (which replaces the process).
+    if record.burn && !is_cross_user {
+        if let Err(e) = client.delete_record(&token) {
+            eprintln!(
+                "{}",
+                format!("Warning: burn deletion failed: {}", e)
+                    .if_supports_color(Stdout, |t| t.yellow())
+            );
+        }
+    }
 
-    // ── 5. Confirmation prompt (RET-04) ───────────────────────────────────
+    // ── 6. Confirmation prompt (RET-04) ───────────────────────────────────
     let skip_confirm = args.yes || !std::io::stdin().is_terminal();
     if !skip_confirm {
         let confirmed = dialoguer::Confirm::new()
@@ -205,13 +273,13 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
         }
     }
 
-    // ── 6. Optional QR code (RET-05) ──────────────────────────────────────
+    // ── 7. Optional QR code (RET-05) ──────────────────────────────────────
     if args.qr {
         qr2term::print_qr(&session_id)
             .map_err(|e| anyhow::anyhow!("QR code render failed: {}", e))?;
     }
 
-    // ── 7. Launch claude --resume (RET-04) ────────────────────────────────
+    // ── 8. Launch claude --resume (RET-04) ────────────────────────────────
     println!(
         "{}",
         format!("Resuming session {}...", &session_id[..8.min(session_id.len())])
