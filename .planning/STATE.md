@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-22)
 ## Current Position
 
 Phase: 7 of 9 (Code Quality and Transport)
-Plan: 1 of 2 complete
-Status: In progress
-Last activity: 2026-02-22 — 07-01 complete (human_duration extraction, typed 404 errors)
+Plan: 2 of 2 complete
+Status: Phase 7 complete
+Last activity: 2026-02-22 — 07-02 complete (lazy signin, get_all_records, list optimization)
 
-Progress: [████░░░░░░] ~38% (v1.0 complete, phases 6-7 in progress)
+Progress: [█████░░░░░] ~44% (v1.0 complete, phases 6-7 complete)
 
 ## Performance Metrics
 
@@ -39,7 +39,7 @@ Progress: [████░░░░░░] ~38% (v1.0 complete, phases 6-7 in pr
 | Phase | Plans | Status |
 |-------|-------|--------|
 | 6. Signed Record Format | 2 | Complete |
-| 7. Code Quality and Transport | 1/2 | In progress |
+| 7. Code Quality and Transport | 2/2 | Complete |
 
 ## Accumulated Context
 
@@ -64,6 +64,9 @@ v1.1 phase 7 decisions:
 - CclinkError::RecordNotFound carries no payload — URL context added by anyhow context chain at call site
 - Dead CclinkError variants removed immediately (no deprecation period) — private binary crate with no external API
 - Shared utilities live in src/util.rs, exported as pub mod util for integration test access
+- ensure_signed_in() uses Cell<bool> interior mutability so &self methods can set session state without &mut self
+- get_all_records() is architectural encapsulation — N individual HTTP fetches are transport implementation detail, not visible to callers
+- list.rs retains explicit client.signin() call for clarity; signed_in flag prevents actual double-signin
 
 ### Pending Todos
 
@@ -78,5 +81,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 07-01-PLAN.md (human_duration extraction to util.rs, typed RecordNotFound error)
+Stopped at: Completed 07-02-PLAN.md (lazy signin Cell<bool>, get_all_records, list command optimization)
 Resume file: None

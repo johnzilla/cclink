@@ -29,7 +29,7 @@ Full details: `milestones/v1.0-ROADMAP.md`
 **Milestone Goal:** Address all findings from external code review — fix security gaps, resolve functional discrepancies, and improve code quality. Every v1.1 requirement addressed before v1.1 ships.
 
 - [x] **Phase 6: Signed Record Format** — Sign burn and recipient fields; enforce key file permissions (completed 2026-02-22)
-- [ ] **Phase 7: Code Quality and Transport** — Structured errors, dead variant removal, lazy signin, list optimization, human_duration dedup
+- [x] **Phase 7: Code Quality and Transport** — Structured errors, dead variant removal, lazy signin, list optimization, human_duration dedup (completed 2026-02-22)
 - [ ] **Phase 8: CLI Fixes and Documentation** — Mutual exclusion for --burn/--share, correct pickup help text, PRD path cleanup
 - [ ] **Phase 9: PIN-Protected Handoffs** — New --pin flag with Argon2id+HKDF-derived encryption
 
@@ -59,10 +59,10 @@ Plans:
   3. `cclink list` makes one transport-layer call (`get_all_records`) — individual HTTP fetches are encapsulated in the transport layer (Pubky homeserver has no batch-get endpoint)
   4. HomeserverClient signs in once per process and reuses the session cookie for subsequent operations
   5. `human_duration` exists in exactly one place in the codebase (utility module shared by all commands)
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
-- [ ] 07-01-PLAN.md — Error cleanup, shared utilities, structured 404 handling (QUAL-01, QUAL-02, QUAL-03)
-- [ ] 07-02-PLAN.md — Lazy signin and list optimization (QUAL-04, FUNC-03)
+- [x] 07-01-PLAN.md — Error cleanup, shared utilities, structured 404 handling (QUAL-01, QUAL-02, QUAL-03)
+- [x] 07-02-PLAN.md — Lazy signin and list optimization (QUAL-04, FUNC-03)
 
 ### Phase 8: CLI Fixes and Documentation
 **Goal**: The CLI surface is correct and honest — flag combinations that cannot work are rejected at parse time, help text shows valid commands, and the PRD reflects actual filesystem paths
@@ -95,6 +95,6 @@ Plans:
 | 4. Advanced Encryption and Management | v1.0 | 3/3 | Complete | 2026-02-22 |
 | 5. Release and Distribution | v1.0 | 2/2 | Complete | 2026-02-22 |
 | 6. Signed Record Format | 2/2 | Complete   | 2026-02-22 | - |
-| 7. Code Quality and Transport | 1/2 | In Progress|  | - |
+| 7. Code Quality and Transport | 2/2 | Complete   | 2026-02-22 | - |
 | 8. CLI Fixes and Documentation | v1.1 | 0/? | Not started | - |
 | 9. PIN-Protected Handoffs | v1.1 | 0/? | Not started | - |
