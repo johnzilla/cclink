@@ -5,23 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-22)
 
 **Core value:** Effortless, secure session handoff between devices: `cclink` on one machine, `cclink pickup` on another, you're back in your session.
-**Current focus:** v1.0 complete. Planning next milestone.
+**Current focus:** v1.1 Security Hardening & Code Review Fixes
 
 ## Current Position
 
-Milestone: v1.0 MVP — SHIPPED 2026-02-22
-Phase: All 5 phases complete (14/14 plans)
-Status: Milestone archived to .planning/milestones/
-Last activity: 2026-02-22 — v1.0 milestone completion
-
-Progress: [██████████] 100%
-
-## v1.0 Summary
-
-**Phases:** 1-5 | **Plans:** 14 | **Rust LOC:** 2,851 | **Timeline:** 2 days
-**Tests:** 40 total (33 unit + 7 integration), all pass
-**Requirements:** 25/25 satisfied
-**Audit:** tech_debt (5 minor items, no blockers)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-22 — Milestone v1.1 started
 
 ## Accumulated Context
 
@@ -34,7 +25,11 @@ Key architectural decisions carried forward:
 - age encryption via Ed25519-to-X25519 derivation
 - Pubky homeserver transport (no custom relay)
 - Key storage at ~/.pubky/secret_key (0600 permissions)
-- burn/recipient as unsigned metadata (backwards-compatible records)
+- burn/recipient as unsigned metadata (backwards-compatible records) — **CHANGING IN v1.1**
+
+v1.1 decisions:
+- Clean break on signed metadata (no v1/v2 version negotiation)
+- --burn + --share mutually exclusive (instead of silent skip or warning)
 
 ### Pending Todos
 
@@ -49,5 +44,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: v1.0 milestone complete
+Stopped at: Starting v1.1 milestone
 Resume file: None

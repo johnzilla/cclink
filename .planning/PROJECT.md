@@ -33,8 +33,17 @@ Effortless, secure session handoff between devices: `cclink` on one machine, `cc
 
 ### Active
 
-- [ ] PIN-protected handoffs (`--pin`) with Argon2id+HKDF-derived key (ENC-03)
-- [ ] Override inferred project label via `--project` (PUB-07)
+- [ ] Sign burn + recipient fields in handoff payload (clean break from v1.0 format)
+- [ ] Enforce key file permissions (0600) explicitly in cclink code
+- [ ] PIN-protected handoffs (`--pin`) with Argon2id+HKDF-derived key
+- [ ] Make `--burn` + `--share` mutually exclusive
+- [ ] Fix pickup CLI help text (self-publish suggests wrong command)
+- [ ] Lazy signin / session reuse in HomeserverClient
+- [ ] Deduplicate `human_duration` into shared utility
+- [ ] Structured error handling (replace string matching with CclinkError variants)
+- [ ] Remove dead CclinkError variants
+- [ ] Optimize list command (reduce N+1 HTTP requests)
+- [ ] Update PRD stale path references (~/.cclink → ~/.pubky)
 
 ### Out of Scope
 
@@ -45,6 +54,20 @@ Effortless, secure session handoff between devices: `cclink` on one machine, `cc
 - Notifications/push — out of scope entirely
 - Session preview/summary — would require accessing session content
 - 3GS integration — future consideration
+- Override inferred project label via `--project` — deferred, not in code review scope
+- Burn-after-read for shared records — homeserver can't support delegated delete; --burn + --share now mutually exclusive
+
+## Current Milestone: v1.1 Security Hardening & Code Review Fixes
+
+**Goal:** Address all findings from external code review — fix security gaps, resolve functional discrepancies, and improve code quality.
+
+**Target features:**
+- Signed metadata (burn + recipient in payload)
+- Key file permission enforcement
+- PIN-protected handoffs
+- Lazy authentication
+- Structured error handling
+- List command optimization
 
 ## Context
 
@@ -83,6 +106,8 @@ Tech stack: Rust, pkarr 5.0.3, age (x25519), reqwest (rustls), clap, owo-colors,
 | burn/recipient as unsigned metadata | Preserve Phase 3 signature compatibility | ✓ Good — backwards-compatible record format |
 | httpmock for sync integration tests | Works with reqwest::blocking without tokio runtime conflicts | ✓ Good — 7 integration tests, all #[test] |
 | PIN mode deferred to v2 | Low entropy (4 digits); --share provides real access control | — Deferred |
+| Sign burn+recipient (clean break) | Old v1.0 records expire via TTL, no migration needed | — Pending |
+| --burn + --share mutually exclusive | Recipient can't DELETE owner's record; silent skip is worse | — Pending |
 
 ---
-*Last updated: 2026-02-22 after v1.0 milestone*
+*Last updated: 2026-02-22 after v1.1 milestone start*
