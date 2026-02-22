@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A single Rust CLI binary (`cclink`) that publishes cryptographically signed, encrypted Claude Code session handoff links via the Pubky protocol. It lets you grab a session ID from one machine, publish it to your Pubky homeserver, and resume it from any other device — no central relay, no accounts, your PKARR key is your identity.
+A single Rust CLI binary (`cclink`) that publishes cryptographically signed, encrypted Claude Code session handoff links via the Pubky protocol. Run `cclink` on one machine to publish your session, `cclink pickup` on another to resume it — no central relay, no accounts, your PKARR key is your identity.
 
 ## Core Value
 
@@ -12,49 +12,53 @@ Effortless, secure session handoff between devices: `cclink` on one machine, `cc
 
 ### Validated
 
-<!-- Shipped and confirmed valuable. -->
-
-(None yet — ship to validate)
+- ✓ Generate and manage PKARR/Ed25519 keypairs (`cclink init`, `cclink whoami`) — v1.0
+- ✓ Discover Claude Code session IDs from `~/.claude/projects/` with cwd scoping — v1.0
+- ✓ Build and sign handoff payload (session ID, hostname, project, timestamps) — v1.0
+- ✓ Encrypt session ID with age (self-encrypt via Ed25519-to-X25519 derivation) — v1.0
+- ✓ Publish encrypted handoff record to Pubky homeserver — v1.0
+- ✓ Retrieve and decrypt own handoff (`cclink pickup`) — v1.0
+- ✓ Share-mode encryption to a specific recipient's public key (`--share`) — v1.0
+- ✓ Burn-after-read mode (`--burn`) — delete record after first retrieval — v1.0
+- ✓ TTL-based expiry (`--ttl`, default 24h) — v1.0
+- ✓ Terminal QR code rendering after publish and on pickup — v1.0
+- ✓ `cclink list` — show active handoff records with comfy-table — v1.0
+- ✓ `cclink revoke` — delete specific or all handoff records — v1.0
+- ✓ Auto-execute `claude --resume <id>` after pickup (default behavior) — v1.0
+- ✓ Colored terminal output with status indicators — v1.0
+- ✓ Ed25519 signature verification on all retrieved records — v1.0
+- ✓ Atomic key write (write-to-temp + rename) — v1.0
+- ✓ CI/CD with 4-platform release builds and curl installer — v1.0
+- ✓ Round-trip encryption tests and plaintext leak detection in CI — v1.0
 
 ### Active
 
-<!-- Current scope. Building toward these. -->
-
-- [ ] Generate and manage PKARR/Ed25519 keypairs (`cclink init`, `cclink whoami`)
-- [ ] Discover Claude Code session IDs from `~/.claude/sessions/`
-- [ ] Build and sign handoff payload (session ID, hostname, project, timestamps)
-- [ ] Encrypt session ID with age (self-encrypt via Ed25519→X25519 derivation)
-- [ ] Publish encrypted handoff record to Pubky homeserver
-- [ ] Retrieve and decrypt own handoff (`cclink pickup`)
-- [ ] PIN-protected handoffs (`--pin`) with HKDF-derived key
-- [ ] Share-mode encryption to a specific recipient's public key (`--share`)
-- [ ] Burn-after-read mode (`--burn`) — delete record after first retrieval
-- [ ] TTL-based expiry (`--ttl`, default 8h)
-- [ ] Terminal QR code rendering after publish and on pickup
-- [ ] `cclink list` — show active handoff records
-- [ ] `cclink revoke` — delete specific or all handoff records
-- [ ] `cclink pickup --exec` — auto-run `claude --resume <id>`
-- [ ] Colored terminal output with status indicators
+- [ ] PIN-protected handoffs (`--pin`) with Argon2id+HKDF-derived key (ENC-03)
+- [ ] Override inferred project label via `--project` (PUB-07)
 
 ### Out of Scope
 
 - Team/shared namespace handoffs — v2, not needed for single-user flow
 - Web UI at cclink.dev — optional polish, CLI-first
 - Claude Code hook/plugin integration — future consideration
-- Mobile app — terminal-only for v1
+- Mobile app — terminal-only
 - Notifications/push — out of scope entirely
 - Session preview/summary — would require accessing session content
 - 3GS integration — future consideration
 
 ## Context
 
-- Claude Code stores sessions in `~/.claude/sessions/` as directories named by UUID
+Shipped v1.0 with 2,851 LOC Rust.
+Tech stack: Rust, pkarr 5.0.3, age (x25519), reqwest (rustls), clap, owo-colors, comfy-table, qr2term.
+
+- Claude Code stores sessions in `~/.claude/projects/` as directories with JSONL progress records
 - `claude --resume <sessionID>` resumes a session from any device with filesystem access
 - Pubky is a decentralized protocol using PKARR (Public Key Addressable Resource Records) for identity
 - Ed25519 keys birationally map to X25519, enabling age encryption with the same keypair
 - The pickup device still needs filesystem access to the session data (SSH, Tailscale, etc.) — cclink only transfers the session ID reference, not session content
-- Handoff records are published to `/pub/cclink/sessions/<token>.json` on the homeserver
-- A `latest.json` pointer tracks the most recent handoff
+- Handoff records are published to `/pub/cclink/<token>` on the homeserver
+- A `latest` pointer tracks the most recent handoff
+- Key storage at `~/.pubky/secret_key` with 0600 permissions (reuses Pubky ecosystem path)
 
 ## Constraints
 
@@ -62,18 +66,23 @@ Effortless, secure session handoff between devices: `cclink` on one machine, `cc
 - **Identity**: PKARR/Ed25519 — reuse existing Pubky identity ecosystem
 - **Transport**: Pubky protocol (homeserver + DHT) — no custom relay
 - **Encryption**: age with x25519 — lightweight, Ed25519-compatible
-- **Key storage**: `~/.cclink/keys` with 0600 permissions
+- **Key storage**: `~/.pubky/secret_key` with 0600 permissions
 - **No session content transit**: Only encrypted session ID and metadata cross the network
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Rust single binary | Performance, pubky crate available, easy distribution | — Pending |
-| age encryption over NaCl box | Simpler API, well-audited, maps cleanly from Ed25519 | — Pending |
-| Pubky homeserver transport | No custom relay needed, censorship-resistant, reuses existing infra | — Pending |
-| 4-digit PIN as convenience, not security | Low entropy acknowledged; share mode exists for real access control | — Pending |
-| Latest pointer pattern | Simple way to find most recent handoff without listing all records | — Pending |
+| Rust single binary | Performance, pubky crate available, easy distribution | ✓ Good — 2,851 LOC, compiles clean |
+| age encryption over NaCl box | Simpler API, well-audited, maps cleanly from Ed25519 | ✓ Good — round-trip verified, no plaintext leaks |
+| Pubky homeserver transport | No custom relay needed, censorship-resistant, reuses existing infra | ✓ Good — PUT/GET/DELETE all working |
+| Latest pointer pattern | Simple way to find most recent handoff without listing all records | ✓ Good — clean single-lookup pickup path |
+| ~/.pubky/ key storage | Reuse Pubky ecosystem directory instead of ~/.cclink/ | ✓ Good — consistent with pubky tooling |
+| 24h default TTL (not 8h) | More forgiving for cross-timezone handoffs | ✓ Good — context decision in Phase 3 |
+| Exec as default behavior | Pickup always runs claude --resume after confirm (not opt-in --exec) | ✓ Good — fewer flags, natural flow |
+| burn/recipient as unsigned metadata | Preserve Phase 3 signature compatibility | ✓ Good — backwards-compatible record format |
+| httpmock for sync integration tests | Works with reqwest::blocking without tokio runtime conflicts | ✓ Good — 7 integration tests, all #[test] |
+| PIN mode deferred to v2 | Low entropy (4 digits); --share provides real access control | — Deferred |
 
 ---
-*Last updated: 2026-02-21 after initialization*
+*Last updated: 2026-02-22 after v1.0 milestone*
