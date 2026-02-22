@@ -9,10 +9,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Key Management
 
-- [ ] **KEY-01**: User can generate an Ed25519/PKARR keypair and store it securely in `~/.cclink/keys` with 0600 permissions
+- [x] **KEY-01**: User can generate an Ed25519/PKARR keypair and store it securely in `~/.cclink/keys` with 0600 permissions
 - [ ] **KEY-02**: User can view their PKARR public key and homeserver info via `cclink whoami`
-- [ ] **KEY-03**: User can import an existing PKARR keypair via `cclink init --import`
-- [ ] **KEY-04**: Private key file is written atomically (write-to-temp + rename) to prevent corruption
+- [x] **KEY-03**: User can import an existing PKARR keypair via `cclink init --import`
+- [x] **KEY-04**: Private key file is written atomically (write-to-temp + rename) to prevent corruption
 
 ### Session Discovery
 
@@ -92,10 +92,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| KEY-01 | Phase 1 | Pending |
+| KEY-01 | Phase 1 | Complete |
 | KEY-02 | Phase 1 | Pending |
-| KEY-03 | Phase 1 | Pending |
-| KEY-04 | Phase 1 | Pending |
+| KEY-03 | Phase 1 | Complete |
+| KEY-04 | Phase 1 | Complete |
 | SESS-01 | Phase 3 | Pending |
 | SESS-02 | Phase 3 | Pending |
 | PUB-01 | Phase 3 | Pending |
