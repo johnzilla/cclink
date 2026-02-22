@@ -40,6 +40,7 @@ Progress: [██████████] 95%
 | Phase 04-advanced-encryption-and-management P01 | 4 | 3 tasks | 9 files |
 | Phase 04-advanced-encryption-and-management P03 | 3 | 2 tasks | 2 files |
 | Phase 04-advanced-encryption-and-management P02 | 2 | 2 tasks | 2 files |
+| Phase 05-release-and-distribution P02 | 2 | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,10 @@ Recent decisions affecting current work:
 - [Phase 04-advanced-encryption-and-management]: Corrupt record in single-token revoke path uses delete-anyway prompt rather than hard-fail
 - [Phase 04-advanced-encryption-and-management]: burn-after-read only on self-pickup: recipient cannot auth to delete publisher record; cross-user burn records expire via TTL
 - [Phase 04-advanced-encryption-and-management]: token derived from record.created_at.to_string() in pickup — consistent with transport publish() convention, avoids restructuring retry closure return
+- [Phase 05-release-and-distribution]: Human-readable artifact names (cclink-linux-x86_64) via matrix artifact_name field, not Rust target triples
+- [Phase 05-release-and-distribution]: install.sh targets POSIX sh (not bash) with set -eu for maximum portability
+- [Phase 05-release-and-distribution]: SHA256 verification: sha256sum first, shasum -a 256 fallback for macOS compatibility
+- [Phase 05-release-and-distribution]: crates.io publish uses OIDC Trusted Publishing (id-token: write) after first manual cargo publish
 
 ### Pending Todos
 

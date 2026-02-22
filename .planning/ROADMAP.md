@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Crypto and Transport** - age self-encryption, Ed25519-to-X25519 conversion, Pubky homeserver integration, and HandoffRecord serialization (completed 2026-02-22)
 - [x] **Phase 3: Core Commands** - `cclink publish`, `cclink pickup`, session discovery, TTL enforcement, QR code, retry/backoff, and colored output (completed 2026-02-22)
 - [x] **Phase 4: Advanced Encryption and Management** - `--share`, `--burn`, `--exec`, signature verification, `cclink list`, and `cclink revoke` (completed 2026-02-22)
-- [ ] **Phase 5: Release and Distribution** - musl static binary, GitHub release artifacts, CI pipeline with round-trip tests
+- [x] **Phase 5: Release and Distribution** - musl static binary, GitHub release artifacts, CI pipeline with round-trip tests (completed 2026-02-22)
 
 ## Phase Details
 
@@ -89,7 +89,7 @@ Plans:
   1. `cargo build --release` produces a musl-linked static binary that runs on a fresh Linux machine with no installed dependencies
   2. GitHub Actions triggers a release on tag push and publishes platform binaries (Linux musl, macOS, Windows) as release artifacts
   3. CI runs round-trip encryption tests (encrypt-then-decrypt for every code path) and fails the build if any key material appears in plaintext in test output
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 Plans:
 - [ ] 05-01-PLAN.md — Integration tests: round-trip encryption for all code paths and plaintext leak detection
 - [ ] 05-02-PLAN.md — CI/CD workflows, POSIX sh installer, and Cargo.toml crates.io metadata
@@ -105,4 +105,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. Crypto and Transport | 3/3 | Complete   | 2026-02-22 |
 | 3. Core Commands | 4/4 | Complete   | 2026-02-22 |
 | 4. Advanced Encryption and Management | 3/3 | Complete   | 2026-02-22 |
-| 5. Release and Distribution | 0/2 | Not started | - |
+| 5. Release and Distribution | 2/2 | Complete   | 2026-02-22 |
