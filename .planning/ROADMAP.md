@@ -43,7 +43,11 @@ Plans:
   2. Session data is published to the Pubky homeserver via PUT (not PKARR DNS records) and retrieved via GET
   3. A `latest.json` pointer is written to the homeserver on each publish
   4. All retrieved records have their Ed25519 signature verified before being returned to the caller
-**Plans**: TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 02-01-PLAN.md — Add Phase 2 dependencies and implement crypto module (Ed25519-to-X25519 key derivation + age encrypt/decrypt)
+- [ ] 02-02-PLAN.md — Implement HandoffRecord struct with canonical JSON serialization and Ed25519 signing/verification
+- [ ] 02-03-PLAN.md — Implement transport module with AuthToken, homeserver signin, PUT/GET, and latest.json pointer
 
 ### Phase 3: Core Commands
 **Goal**: Users can complete the full publish-to-pickup loop from two different machines
@@ -86,7 +90,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation and Key Management | 1/2 | Complete    | 2026-02-22 |
-| 2. Crypto and Transport | 0/TBD | Not started | - |
+| 2. Crypto and Transport | 0/3 | Not started | - |
 | 3. Core Commands | 0/TBD | Not started | - |
 | 4. Advanced Encryption and Management | 0/TBD | Not started | - |
 | 5. Release and Distribution | 0/TBD | Not started | - |
