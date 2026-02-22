@@ -6,6 +6,7 @@ mod keys;
 mod record;
 mod session;
 mod transport;
+mod util;
 
 use clap::Parser;
 use cli::{Cli, Commands};
