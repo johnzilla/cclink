@@ -12,7 +12,7 @@ CCLink ships as a single Rust binary that lets you publish an encrypted Claude C
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation and Key Management** - Rust project scaffold, keypair generation, atomic key storage, and `cclink init` / `cclink whoami`
+- [x] **Phase 1: Foundation and Key Management** - Rust project scaffold, keypair generation, atomic key storage, and `cclink init` / `cclink whoami` (completed 2026-02-22)
 - [ ] **Phase 2: Crypto and Transport** - age self-encryption, Ed25519-to-X25519 conversion, Pubky homeserver integration, and HandoffRecord serialization
 - [ ] **Phase 3: Core Commands** - `cclink publish`, `cclink pickup`, session discovery, TTL enforcement, QR code, retry/backoff, and colored output
 - [ ] **Phase 4: Advanced Encryption and Management** - `--share`, `--burn`, `--exec`, signature verification, `cclink list`, and `cclink revoke`
@@ -29,7 +29,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. User runs `cclink whoami` and sees their PKARR public key and homeserver info
   3. User runs `cclink init --import` and an existing keypair is loaded without loss
   4. The key file on disk survives a simulated crash during write (atomic write-to-temp-then-rename verified)
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [ ] 01-01-PLAN.md — Scaffold Rust project, key store module, and `cclink init` (generate + import + atomic write)
 - [ ] 01-02-PLAN.md — Implement `cclink whoami` with identity display and clipboard support
@@ -85,7 +85,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation and Key Management | 1/2 | In Progress|  |
+| 1. Foundation and Key Management | 1/2 | Complete    | 2026-02-22 |
 | 2. Crypto and Transport | 0/TBD | Not started | - |
 | 3. Core Commands | 0/TBD | Not started | - |
 | 4. Advanced Encryption and Management | 0/TBD | Not started | - |
