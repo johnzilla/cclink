@@ -44,7 +44,10 @@ Full details: `milestones/v1.0-ROADMAP.md`
   2. Picking up a v1.1 record that was tampered to flip the burn flag fails signature verification and errors out
   3. On any cclink operation that loads the key, the code explicitly checks and enforces 0600 permissions rather than relying on pkarr
   4. Existing v1.0 records (unsigned burn/recipient) expire via TTL without any migration step required
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 06-01-PLAN.md — Sign burn and recipient into HandoffRecordSignable (TDD)
+- [ ] 06-02-PLAN.md — Enforce 0600 key file permissions on load and write (TDD)
 
 ### Phase 7: Code Quality and Transport
 **Goal**: The codebase is clean — no dead error variants, no stringly-typed 404 detection, no duplicated utilities, and the homeserver client reuses sessions for efficient transport
@@ -88,7 +91,7 @@ Full details: `milestones/v1.0-ROADMAP.md`
 | 3. Core Commands | v1.0 | 4/4 | Complete | 2026-02-22 |
 | 4. Advanced Encryption and Management | v1.0 | 3/3 | Complete | 2026-02-22 |
 | 5. Release and Distribution | v1.0 | 2/2 | Complete | 2026-02-22 |
-| 6. Signed Record Format | v1.1 | 0/? | Not started | - |
+| 6. Signed Record Format | v1.1 | 0/2 | Not started | - |
 | 7. Code Quality and Transport | v1.1 | 0/? | Not started | - |
 | 8. CLI Fixes and Documentation | v1.1 | 0/? | Not started | - |
 | 9. PIN-Protected Handoffs | v1.1 | 0/? | Not started | - |
