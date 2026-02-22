@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-22)
 
 **Core value:** Effortless, secure session handoff between devices: `cclink` on one machine, `cclink pickup` on another, you're back in your session.
-**Current focus:** Phase 8 — CLI Fixes and Documentation
+**Current focus:** Phase 9 — PIN-Protected Handoffs
 
 ## Current Position
 
-Phase: 8 of 9 (CLI Fixes and Documentation)
-Plan: 1 of 1 complete
-Status: Phase 8 complete
-Last activity: 2026-02-22 — 08-01 complete (--burn/--share conflict, self-publish message, PRD path fixes)
+Phase: 9 of 9 (PIN-Protected Handoffs)
+Plan: 1 of 2 complete
+Status: Phase 9 in progress — 09-01 complete
+Last activity: 2026-02-22 — 09-01 complete (PIN key derivation Argon2id+HKDF, pin_salt record field)
 
-Progress: [██████░░░░] ~55% (v1.0 complete, phases 6-8 complete)
+Progress: [███████░░░] ~65% (v1.0 complete, phases 6-9 in progress)
 
 ## Performance Metrics
 
@@ -41,6 +41,7 @@ Progress: [██████░░░░] ~55% (v1.0 complete, phases 6-8 compl
 | 6. Signed Record Format | 2 | Complete |
 | 7. Code Quality and Transport | 2/2 | Complete |
 | 8. CLI Fixes and Documentation | 1/1 | Complete |
+| 9. PIN-Protected Handoffs | 1/2 | In Progress |
 
 ## Accumulated Context
 
@@ -74,6 +75,13 @@ v1.1 phase 8 decisions:
 - Self-publish message shows "cclink pickup" with no token; QR section retains token for concrete identifier
 - PRD updated only for ~/.cclink -> ~/.pubky/secret_key; other stale references left intentionally (historical planning doc)
 
+v1.1 phase 9 decisions (09-01):
+- PIN key derivation: Argon2id (t=3, m=64MB, p=1) + HKDF-SHA256 with info=cclink-pin-v1
+- PIN-derived X25519 scalar fed directly into age_identity() — HKDF expansion ensures correct domain
+- pin_salt: Option<String> field added alphabetically between project and pubkey in both HandoffRecord and HandoffRecordSignable
+- Field order updated: blob, burn, created_at, hostname, pin_salt, project, pubkey, recipient, ttl
+- #[allow(dead_code)] on pin_derive_key/pin_encrypt/pin_decrypt — temporary until wired in 09-02
+
 ### Pending Todos
 
 None.
@@ -87,5 +95,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 08-01-PLAN.md (--burn/--share conflict, self-publish message, PRD path fixes)
+Stopped at: Completed 09-01-PLAN.md (PIN key derivation Argon2id+HKDF, pin_salt record field)
 Resume file: None

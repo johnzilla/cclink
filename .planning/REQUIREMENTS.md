@@ -11,7 +11,7 @@ Requirements for v1.1 Security Hardening & Code Review Fixes. Each maps to roadm
 
 - [x] **SEC-01**: Handoff payload signs burn and recipient fields (clean break from v1.0 unsigned format)
 - [x] **SEC-02**: Key file permissions (0600) enforced explicitly in cclink code, not just delegated to pkarr
-- [ ] **SEC-03**: User can publish PIN-protected handoff (`--pin`) with Argon2id+HKDF-derived encryption key
+- [x] **SEC-03**: User can publish PIN-protected handoff (`--pin`) with Argon2id+HKDF-derived encryption key
 
 ### Functional
 
@@ -55,7 +55,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | SEC-01 | Phase 6 | Complete |
 | SEC-02 | Phase 6 | Complete |
-| SEC-03 | Phase 9 | Pending |
+| SEC-03 | Phase 9 | Complete |
 | FUNC-01 | Phase 8 | Complete |
 | FUNC-02 | Phase 8 | Complete |
 | FUNC-03 | Phase 7 | Complete |

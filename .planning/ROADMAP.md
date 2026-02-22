@@ -85,7 +85,7 @@ Plans:
   2. Running `cclink pickup` on a PIN-protected record prompts for the PIN before decryption succeeds
   3. Providing the wrong PIN during pickup produces a clear decryption failure error (not a panic or silent wrong result)
   4. A PIN-protected record cannot be decrypted by the owner's keypair alone — the PIN is required
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
 - [ ] 09-01-PLAN.md — PIN key derivation with Argon2id+HKDF and pin_salt record field (TDD)
 - [ ] 09-02-PLAN.md — CLI --pin flag, publish/pickup flow integration, integration tests
@@ -102,4 +102,4 @@ Plans:
 | 6. Signed Record Format | 2/2 | Complete   | 2026-02-22 | - |
 | 7. Code Quality and Transport | 2/2 | Complete    | 2026-02-22 | - |
 | 8. CLI Fixes and Documentation | v1.1 | Complete    | 2026-02-22 | 2026-02-22 |
-| 9. PIN-Protected Handoffs | v1.1 | 0/2 | Not started | - |
+| 9. PIN-Protected Handoffs | 1/2 | In Progress|  | - |
