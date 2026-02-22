@@ -39,14 +39,14 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Advanced Encryption
 
-- [ ] **ENC-01**: User can encrypt a handoff to a specific recipient's X25519 key via `--share <pubkey>`
-- [ ] **ENC-02**: User can mark a handoff as burn-after-read via `--burn` (record deleted after first retrieval)
+- [x] **ENC-01**: User can encrypt a handoff to a specific recipient's X25519 key via `--share <pubkey>`
+- [x] **ENC-02**: User can mark a handoff as burn-after-read via `--burn` (record deleted after first retrieval)
 
 ### Management
 
-- [ ] **MGT-01**: User can list active handoff records via `cclink list` with token, project, age, TTL remaining, and burn status
-- [ ] **MGT-02**: User can revoke a specific handoff via `cclink revoke <token>`
-- [ ] **MGT-03**: User can revoke all handoffs via `cclink revoke --all`
+- [x] **MGT-01**: User can list active handoff records via `cclink list` with token, project, age, TTL remaining, and burn status
+- [x] **MGT-02**: User can revoke a specific handoff via `cclink revoke <token>`
+- [x] **MGT-03**: User can revoke all handoffs via `cclink revoke --all`
 
 ### Terminal UX
 
@@ -110,11 +110,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RET-04 | Phase 3 | Complete |
 | RET-05 | Phase 3 | Complete |
 | RET-06 | Phase 3 | Complete |
-| ENC-01 | Phase 4 | Pending |
-| ENC-02 | Phase 4 | Pending |
-| MGT-01 | Phase 4 | Pending |
-| MGT-02 | Phase 4 | Pending |
-| MGT-03 | Phase 4 | Pending |
+| ENC-01 | Phase 4 | Complete |
+| ENC-02 | Phase 4 | Complete |
+| MGT-01 | Phase 4 | Complete |
+| MGT-02 | Phase 4 | Complete |
+| MGT-03 | Phase 4 | Complete |
 | UX-01 | Phase 3 | Complete |
 | UX-02 | Phase 2 | Complete |
 
