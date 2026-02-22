@@ -89,7 +89,10 @@ Plans:
   1. `cargo build --release` produces a musl-linked static binary that runs on a fresh Linux machine with no installed dependencies
   2. GitHub Actions triggers a release on tag push and publishes platform binaries (Linux musl, macOS, Windows) as release artifacts
   3. CI runs round-trip encryption tests (encrypt-then-decrypt for every code path) and fails the build if any key material appears in plaintext in test output
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 05-01-PLAN.md — Integration tests: round-trip encryption for all code paths and plaintext leak detection
+- [ ] 05-02-PLAN.md — CI/CD workflows, POSIX sh installer, and Cargo.toml crates.io metadata
 
 ## Progress
 
@@ -102,4 +105,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. Crypto and Transport | 3/3 | Complete   | 2026-02-22 |
 | 3. Core Commands | 4/4 | Complete   | 2026-02-22 |
 | 4. Advanced Encryption and Management | 3/3 | Complete   | 2026-02-22 |
-| 5. Release and Distribution | 0/TBD | Not started | - |
+| 5. Release and Distribution | 0/2 | Not started | - |
