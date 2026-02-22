@@ -7,7 +7,7 @@ CCLink ships as a single Rust binary that lets you publish an encrypted Claude C
 ## Milestones
 
 - ✅ **v1.0 MVP** — Phases 1-5 (shipped 2026-02-22)
-- 🚧 **v1.1 Security Hardening & Code Review Fixes** — Phases 6-9 (in progress)
+- 🚧 **v1.1 Security Hardening & Code Review Fixes** — Phases 6-10 (in progress)
 
 ## Phases
 
@@ -103,3 +103,20 @@ Plans:
 | 7. Code Quality and Transport | 2/2 | Complete    | 2026-02-22 | - |
 | 8. CLI Fixes and Documentation | v1.1 | Complete    | 2026-02-22 | 2026-02-22 |
 | 9. PIN-Protected Handoffs | 2/2 | Complete   | 2026-02-22 | - |
+| 10. Pubky Homeserver Transport Fix | v1.1 | 0/? | Not started | - |
+
+### Phase 10: Pubky Homeserver Transport Fix
+**Goal**: The transport layer works correctly against the real Pubky homeserver API — Host header identifies tenants, signup flow handles first-time users, and all CRUD operations succeed against live pubky.app
+**Depends on**: Phase 9
+**Requirements**: FUNC-04
+**Success Criteria** (what must be TRUE):
+  1. POST /session includes Host header with z32-encoded pubkey and succeeds for registered users
+  2. First-time users are automatically signed up via POST /signup when POST /session returns 404
+  3. PUT /pub/cclink/{token} includes Host header and successfully publishes records to pubky.app
+  4. GET cross-user records uses Host header instead of embedding pubkey in URL path
+  5. List parsing correctly handles full pubky:// URI format returned by homeserver directory listings
+  6. Full end-to-end flow works: cclink init -> cclink (publish) -> cclink pickup against live pubky.app
+**Plans:** TBD
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 10 to break down)

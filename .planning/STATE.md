@@ -89,13 +89,17 @@ v1.1 phase 9 decisions (09-02):
 - Non-interactive guard on pickup: bail with clear message when pin_salt present but stdin is not a terminal
 - #[allow(dead_code)] annotations removed from pin_derive_key/pin_encrypt/pin_decrypt — wired to binary
 
+### Roadmap Evolution
+
+- Phase 10 added: Pubky Homeserver Transport Fix (FUNC-04) — discovered during Phase 9 UAT that transport layer uses wrong API convention (missing Host header, no signup flow, wrong cross-user URL format, wrong list parsing)
+
 ### Pending Todos
 
 None.
 
 ### Blockers/Concerns
 
-- HomeserverClient URL routing for multi-tenant PUT needs empirical verification against live pubky.app
+- HomeserverClient URL routing for multi-tenant PUT needs empirical verification against live pubky.app → CONFIRMED BROKEN: Phase 10 created to fix
 - QR code content wrong when --share + --qr combined (minor tech debt, not in v1.1 scope)
 - Cargo.toml/install.sh placeholder `user/cclink` repo path — must fix before next release
 
