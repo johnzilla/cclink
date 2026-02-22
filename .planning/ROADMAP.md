@@ -56,7 +56,7 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. `cargo build` produces zero compiler warnings (no unused variant warnings from CclinkError)
   2. Error handling in pickup and list never matches on the string "404" or "not found" — uses typed CclinkError variants instead
-  3. `cclink list` with N records makes one batch HTTP request, not N individual fetches
+  3. `cclink list` makes one transport-layer call (`get_all_records`) — individual HTTP fetches are encapsulated in the transport layer (Pubky homeserver has no batch-get endpoint)
   4. HomeserverClient signs in once per process and reuses the session cookie for subsequent operations
   5. `human_duration` exists in exactly one place in the codebase (utility module shared by all commands)
 **Plans:** 2 plans
