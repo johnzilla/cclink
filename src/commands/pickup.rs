@@ -66,8 +66,9 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
         let latest_bytes = match client.get_latest(pk_z32_opt.as_deref()) {
             Ok(bytes) => bytes,
             Err(e) => {
-                let msg = e.to_string();
-                if msg.contains("not found") || msg.contains("404") {
+                if e.downcast_ref::<crate::error::CclinkError>()
+                    .map_or(false, |ce| matches!(ce, crate::error::CclinkError::RecordNotFound))
+                {
                     return Err(BackoffError::permanent(e));
                 }
                 return Err(BackoffError::transient(e));
@@ -89,8 +90,9 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
             match client.get_record_by_pubkey(pk_z32, token, &parsed_pubkey) {
                 Ok(r) => Ok(r),
                 Err(e) => {
-                    let msg = e.to_string();
-                    if msg.contains("not found") || msg.contains("404") {
+                    if e.downcast_ref::<crate::error::CclinkError>()
+                        .map_or(false, |ce| matches!(ce, crate::error::CclinkError::RecordNotFound))
+                    {
                         Err(BackoffError::permanent(e))
                     } else {
                         Err(BackoffError::transient(e))
@@ -105,8 +107,9 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
             match client.get_record(token, &keypair.public_key()) {
                 Ok(r) => Ok(r),
                 Err(e) => {
-                    let msg = e.to_string();
-                    if msg.contains("not found") || msg.contains("404") {
+                    if e.downcast_ref::<crate::error::CclinkError>()
+                        .map_or(false, |ce| matches!(ce, crate::error::CclinkError::RecordNotFound))
+                    {
                         Err(BackoffError::permanent(e))
                     } else {
                         Err(BackoffError::transient(e))

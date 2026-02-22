@@ -350,7 +350,7 @@ impl HomeserverClient {
             .map_err(|e| anyhow::anyhow!("GET request failed: {}", e))?;
 
         if response.status() == reqwest::StatusCode::NOT_FOUND {
-            anyhow::bail!("Record not found at {}", url);
+            return Err(crate::error::CclinkError::RecordNotFound.into());
         }
 
         if !response.status().is_success() {
