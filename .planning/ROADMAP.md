@@ -31,7 +31,7 @@ Full details: `milestones/v1.0-ROADMAP.md`
 - [x] **Phase 6: Signed Record Format** — Sign burn and recipient fields; enforce key file permissions (completed 2026-02-22)
 - [x] **Phase 7: Code Quality and Transport** — Structured errors, dead variant removal, lazy signin, list optimization, human_duration dedup (completed 2026-02-22)
 - [x] **Phase 8: CLI Fixes and Documentation** — Mutual exclusion for --burn/--share, correct pickup help text, PRD path cleanup (completed 2026-02-22)
-- [ ] **Phase 9: PIN-Protected Handoffs** — New --pin flag with Argon2id+HKDF-derived encryption
+- [x] **Phase 9: PIN-Protected Handoffs** — New --pin flag with Argon2id+HKDF-derived encryption (completed 2026-02-22)
 
 ## Phase Details
 
@@ -85,7 +85,7 @@ Plans:
   2. Running `cclink pickup` on a PIN-protected record prompts for the PIN before decryption succeeds
   3. Providing the wrong PIN during pickup produces a clear decryption failure error (not a panic or silent wrong result)
   4. A PIN-protected record cannot be decrypted by the owner's keypair alone — the PIN is required
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [ ] 09-01-PLAN.md — PIN key derivation with Argon2id+HKDF and pin_salt record field (TDD)
 - [ ] 09-02-PLAN.md — CLI --pin flag, publish/pickup flow integration, integration tests
@@ -102,4 +102,4 @@ Plans:
 | 6. Signed Record Format | 2/2 | Complete   | 2026-02-22 | - |
 | 7. Code Quality and Transport | 2/2 | Complete    | 2026-02-22 | - |
 | 8. CLI Fixes and Documentation | v1.1 | Complete    | 2026-02-22 | 2026-02-22 |
-| 9. PIN-Protected Handoffs | 1/2 | In Progress|  | - |
+| 9. PIN-Protected Handoffs | 2/2 | Complete   | 2026-02-22 | - |

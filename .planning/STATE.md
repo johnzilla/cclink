@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-22)
 
 **Core value:** Effortless, secure session handoff between devices: `cclink` on one machine, `cclink pickup` on another, you're back in your session.
-**Current focus:** Phase 9 — PIN-Protected Handoffs
+**Current focus:** Phase 9 complete — v1.1 complete
 
 ## Current Position
 
 Phase: 9 of 9 (PIN-Protected Handoffs)
-Plan: 1 of 2 complete
-Status: Phase 9 in progress — 09-01 complete
-Last activity: 2026-02-22 — 09-01 complete (PIN key derivation Argon2id+HKDF, pin_salt record field)
+Plan: 2 of 2 complete
+Status: Phase 9 complete — all plans done
+Last activity: 2026-02-22 — 09-02 complete (--pin CLI flag, publish/pickup PIN flow, integration tests)
 
-Progress: [███████░░░] ~65% (v1.0 complete, phases 6-9 in progress)
+Progress: [██████████] ~100% (v1.1 complete)
 
 ## Performance Metrics
 
@@ -41,7 +41,7 @@ Progress: [███████░░░] ~65% (v1.0 complete, phases 6-9 in pr
 | 6. Signed Record Format | 2 | Complete |
 | 7. Code Quality and Transport | 2/2 | Complete |
 | 8. CLI Fixes and Documentation | 1/1 | Complete |
-| 9. PIN-Protected Handoffs | 1/2 | In Progress |
+| 9. PIN-Protected Handoffs | 2/2 | Complete |
 
 ## Accumulated Context
 
@@ -82,6 +82,13 @@ v1.1 phase 9 decisions (09-01):
 - Field order updated: blob, burn, created_at, hostname, pin_salt, project, pubkey, recipient, ttl
 - #[allow(dead_code)] on pin_derive_key/pin_encrypt/pin_decrypt — temporary until wired in 09-02
 
+v1.1 phase 9 decisions (09-02):
+- --pin conflicts_with share (not burn): --pin + --burn is valid (burn-after-read PIN-protected record)
+- PIN pickup path runs BEFORE is_cross_user check: PIN-derived key is independent of keypair identity
+- Single-entry PIN prompt on pickup (no confirmation): pickup is read-only; confirmation prompt redundant
+- Non-interactive guard on pickup: bail with clear message when pin_salt present but stdin is not a terminal
+- #[allow(dead_code)] annotations removed from pin_derive_key/pin_encrypt/pin_decrypt — wired to binary
+
 ### Pending Todos
 
 None.
@@ -95,5 +102,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 09-01-PLAN.md (PIN key derivation Argon2id+HKDF, pin_salt record field)
+Stopped at: Completed 09-02-PLAN.md (--pin CLI flag, publish/pickup PIN flow, integration tests) — v1.1 complete
 Resume file: None
