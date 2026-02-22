@@ -23,6 +23,10 @@ pub struct Cli {
     #[arg(long, conflicts_with = "share")]
     pub burn: bool,
 
+    /// Protect handoff with a PIN (prompts for PIN at publish time)
+    #[arg(long, conflicts_with = "share")]
+    pub pin: bool,
+
     #[command(subcommand)]
     pub command: Option<Commands>,
 }

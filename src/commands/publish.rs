@@ -79,17 +79,34 @@ pub fn run_publish(cli: &crate::cli::Cli) -> anyhow::Result<()> {
         session.project.if_supports_color(Stdout, |t| t.cyan())
     );
 
-    // ── 4. Encrypt session ID with age ────────────────────────────────────
+    // ── 4. Encrypt session ID ─────────────────────────────────────────────
+    // --pin:   encrypt with PIN-derived key (prompts for PIN with confirmation)
     // --share: encrypt to the specified recipient's X25519 key (ENC-01)
     // Otherwise: self-encrypt to own X25519 key (existing behavior)
-    let recipient = if let Some(ref share_pubkey) = cli.share {
-        crate::crypto::recipient_from_z32(share_pubkey)?
+    let (blob, pin_salt_value) = if cli.pin {
+        // PIN-protected: prompt for PIN, encrypt with PIN-derived key
+        let pin = dialoguer::Password::new()
+            .with_prompt("Enter PIN for this handoff")
+            .with_confirmation("Confirm PIN", "PINs don't match")
+            .interact()
+            .map_err(|e| anyhow::anyhow!("PIN prompt failed: {}", e))?;
+
+        let (ciphertext, salt) = crate::crypto::pin_encrypt(session.session_id.as_bytes(), &pin)?;
+        let blob = base64::engine::general_purpose::STANDARD.encode(&ciphertext);
+        let salt_b64 = base64::engine::general_purpose::STANDARD.encode(salt);
+        (blob, Some(salt_b64))
     } else {
-        let x25519_pubkey = crate::crypto::ed25519_to_x25519_public(&keypair);
-        crate::crypto::age_recipient(&x25519_pubkey)
+        // Existing path: age encrypt to recipient (self or --share)
+        let recipient = if let Some(ref share_pubkey) = cli.share {
+            crate::crypto::recipient_from_z32(share_pubkey)?
+        } else {
+            let x25519_pubkey = crate::crypto::ed25519_to_x25519_public(&keypair);
+            crate::crypto::age_recipient(&x25519_pubkey)
+        };
+        let ciphertext = crate::crypto::age_encrypt(session.session_id.as_bytes(), &recipient)?;
+        let blob = base64::engine::general_purpose::STANDARD.encode(&ciphertext);
+        (blob, None)
     };
-    let ciphertext = crate::crypto::age_encrypt(session.session_id.as_bytes(), &recipient)?;
-    let blob = base64::engine::general_purpose::STANDARD.encode(&ciphertext);
 
     // ── 5. Build and sign record ──────────────────────────────────────────
     let created_at = SystemTime::now()
@@ -102,7 +119,7 @@ pub fn run_publish(cli: &crate::cli::Cli) -> anyhow::Result<()> {
         burn: cli.burn,
         created_at,
         hostname,
-        pin_salt: None,
+        pin_salt: pin_salt_value.clone(),
         project: session.project.clone(),
         pubkey: keypair.public_key().to_z32(),
         recipient: cli.share.clone(),
@@ -114,7 +131,7 @@ pub fn run_publish(cli: &crate::cli::Cli) -> anyhow::Result<()> {
         burn: cli.burn,
         created_at: signable.created_at,
         hostname: signable.hostname,
-        pin_salt: None,
+        pin_salt: pin_salt_value,
         project: signable.project,
         pubkey: signable.pubkey,
         recipient: cli.share.clone(),
@@ -131,6 +148,13 @@ pub fn run_publish(cli: &crate::cli::Cli) -> anyhow::Result<()> {
         println!(
             "{}",
             "Warning: This handoff will be deleted after the first successful pickup."
+                .if_supports_color(Stdout, |t| t.yellow())
+        );
+    }
+    if cli.pin {
+        println!(
+            "{}",
+            "PIN-protected: recipient must enter the PIN to decrypt."
                 .if_supports_color(Stdout, |t| t.yellow())
         );
     }
