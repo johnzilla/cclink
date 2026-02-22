@@ -1,0 +1,17 @@
+name: CI
+on:
+  push:
+    branches: ["*"]
+  pull_request:
+    branches: ["*"]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --locked
+      - name: Verify no OpenSSL dependency
+        run: |
+          cargo tree 2>/dev/null | grep -i openssl && echo "ERROR: OpenSSL found in dependency tree" && exit 1 || echo "OK: No OpenSSL dependency"

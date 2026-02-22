@@ -2,6 +2,13 @@
 name = "cclink"
 version = "0.1.0"
 edition = "2021"
+description = "Secure session handoff between devices via Pubky"
+license = "MIT"
+repository = "https://github.com/user/cclink"
+homepage = "https://github.com/user/cclink"
+readme = "README.md"
+keywords = ["session", "handoff", "encryption", "pubky", "cli"]
+categories = ["command-line-utilities"]
 
 [[bin]]
 name = "cclink"
@@ -28,3 +35,6 @@ dialoguer = "0.12"
 qr2term = "0.3"
 backoff = "0.4"
 comfy-table = "7.2.2"
+
+[dev-dependencies]
+httpmock = "0.8"
