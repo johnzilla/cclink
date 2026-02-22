@@ -3,8 +3,20 @@ use clap::{Parser, Subcommand};
 #[derive(Parser)]
 #[command(name = "cclink", version, about = "Secure session handoff via Pubky")]
 pub struct Cli {
+    /// Optional session ID to publish (auto-discovers most recent if omitted)
+    #[arg(value_name = "SESSION_ID")]
+    pub session_id: Option<String>,
+
+    /// Time-to-live in seconds (default: 86400 = 24 hours)
+    #[arg(long, default_value = "86400")]
+    pub ttl: u64,
+
+    /// Render a QR code in the terminal after publish
+    #[arg(long)]
+    pub qr: bool,
+
     #[command(subcommand)]
-    pub command: Commands,
+    pub command: Option<Commands>,
 }
 
 #[derive(Subcommand)]
@@ -13,6 +25,8 @@ pub enum Commands {
     Init(InitArgs),
     /// Show identity (public key, homeserver, fingerprint)
     Whoami,
+    /// Pick up a session handoff from the homeserver
+    Pickup(PickupArgs),
 }
 
 #[derive(Parser)]
@@ -28,4 +42,19 @@ pub struct InitArgs {
     /// Skip overwrite confirmation prompt
     #[arg(long, short = 'y')]
     pub yes: bool,
+}
+
+#[derive(Parser)]
+pub struct PickupArgs {
+    /// z32-encoded public key of the handoff publisher (defaults to own key)
+    #[arg(value_name = "PUBKEY")]
+    pub pubkey: Option<String>,
+
+    /// Skip confirmation prompt and launch immediately
+    #[arg(long, short = 'y')]
+    pub yes: bool,
+
+    /// Render a QR code showing the session ID
+    #[arg(long)]
+    pub qr: bool,
 }
