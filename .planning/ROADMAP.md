@@ -29,7 +29,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. User runs `cclink whoami` and sees their PKARR public key and homeserver info
   3. User runs `cclink init --import` and an existing keypair is loaded without loss
   4. The key file on disk survives a simulated crash during write (atomic write-to-temp-then-rename verified)
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 01-01-PLAN.md — Scaffold Rust project, key store module, and `cclink init` (generate + import + atomic write)
+- [ ] 01-02-PLAN.md — Implement `cclink whoami` with identity display and clipboard support
 
 ### Phase 2: Crypto and Transport
 **Goal**: Encrypted payloads can be written to and read from the Pubky homeserver
@@ -82,7 +85,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation and Key Management | 0/TBD | Not started | - |
+| 1. Foundation and Key Management | 0/2 | Planning complete | - |
 | 2. Crypto and Transport | 0/TBD | Not started | - |
 | 3. Core Commands | 0/TBD | Not started | - |
 | 4. Advanced Encryption and Management | 0/TBD | Not started | - |
