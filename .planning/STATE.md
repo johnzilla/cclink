@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-22)
 
 **Core value:** Effortless, secure session handoff between devices: `cclink` on one machine, `cclink pickup` on another, you're back in your session.
-**Current focus:** Phase 6 — Signed Record Format (v1.1)
+**Current focus:** Phase 7 — Code Quality and Transport
 
 ## Current Position
 
-Phase: 6 of 9 (Signed Record Format)
-Plan: 2 of 2 complete
-Status: Phase complete
-Last activity: 2026-02-22 — 06-02 complete (0600 permission enforcement on secret key file)
+Phase: 7 of 9 (Code Quality and Transport)
+Plan: 1 of 2 complete
+Status: In progress
+Last activity: 2026-02-22 — 07-01 complete (human_duration extraction, typed 404 errors)
 
-Progress: [████░░░░░░] ~33% (v1.0 complete, phase 6 complete)
+Progress: [████░░░░░░] ~38% (v1.0 complete, phases 6-7 in progress)
 
 ## Performance Metrics
 
@@ -33,6 +33,13 @@ Progress: [████░░░░░░] ~33% (v1.0 complete, phase 6 complete
 | 5. Release | 2 | Complete |
 
 *v1.1 metrics start fresh from Phase 6*
+
+**By Phase (v1.1):**
+
+| Phase | Plans | Status |
+|-------|-------|--------|
+| 6. Signed Record Format | 2 | Complete |
+| 7. Code Quality and Transport | 1/2 | In progress |
 
 ## Accumulated Context
 
@@ -53,6 +60,11 @@ v1.1 decisions:
 - check_key_permissions integrated into load_keypair — enforces 0600 at read time (SEC-02)
 - write_keypair_atomic explicitly sets 0600 after rename — cclink owns permission guarantee, not pkarr
 
+v1.1 phase 7 decisions:
+- CclinkError::RecordNotFound carries no payload — URL context added by anyhow context chain at call site
+- Dead CclinkError variants removed immediately (no deprecation period) — private binary crate with no external API
+- Shared utilities live in src/util.rs, exported as pub mod util for integration test access
+
 ### Pending Todos
 
 None.
@@ -66,5 +78,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 06-02-PLAN.md (0600 permission enforcement — phase 6 complete)
+Stopped at: Completed 07-01-PLAN.md (human_duration extraction to util.rs, typed RecordNotFound error)
 Resume file: None

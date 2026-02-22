@@ -59,7 +59,7 @@ Plans:
   3. `cclink list` makes one transport-layer call (`get_all_records`) — individual HTTP fetches are encapsulated in the transport layer (Pubky homeserver has no batch-get endpoint)
   4. HomeserverClient signs in once per process and reuses the session cookie for subsequent operations
   5. `human_duration` exists in exactly one place in the codebase (utility module shared by all commands)
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
 - [ ] 07-01-PLAN.md — Error cleanup, shared utilities, structured 404 handling (QUAL-01, QUAL-02, QUAL-03)
 - [ ] 07-02-PLAN.md — Lazy signin and list optimization (QUAL-04, FUNC-03)
@@ -95,6 +95,6 @@ Plans:
 | 4. Advanced Encryption and Management | v1.0 | 3/3 | Complete | 2026-02-22 |
 | 5. Release and Distribution | v1.0 | 2/2 | Complete | 2026-02-22 |
 | 6. Signed Record Format | 2/2 | Complete   | 2026-02-22 | - |
-| 7. Code Quality and Transport | v1.1 | 0/2 | Not started | - |
+| 7. Code Quality and Transport | 1/2 | In Progress|  | - |
 | 8. CLI Fixes and Documentation | v1.1 | 0/? | Not started | - |
 | 9. PIN-Protected Handoffs | v1.1 | 0/? | Not started | - |
