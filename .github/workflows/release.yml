@@ -1,0 +1,67 @@
+name: Release
+on:
+  push:
+    tags: ["v[0-9]*"]
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify Cargo.toml version matches tag
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          CARGO_VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')
+          echo "Tag version:   $TAG_VERSION"
+          echo "Cargo version: $CARGO_VERSION"
+          if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
+            echo "ERROR: Tag version ($TAG_VERSION) does not match Cargo.toml version ($CARGO_VERSION)"
+            exit 1
+          fi
+          echo "OK: versions match"
+
+      - uses: taiki-e/create-gh-release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  upload-assets:
+    needs: create-release
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            artifact_name: cclink-linux-x86_64
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            artifact_name: cclink-linux-aarch64
+          - target: universal-apple-darwin
+            os: macos-latest
+            artifact_name: cclink-darwin-universal
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            artifact_name: cclink-windows-x86_64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: taiki-e/upload-rust-binary-action@v1
+        with:
+          bin: cclink
+          target: ${{ matrix.target }}
+          archive: ${{ matrix.artifact_name }}
+          checksum: sha256
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-crates-io:
+    needs: upload-assets
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # for Trusted Publishing OIDC
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      # First publish requires CARGO_REGISTRY_TOKEN secret or manual 'cargo publish'.
+      # After that, configure Trusted Publishing on crates.io for OIDC-based auth.
+      - run: cargo publish
