@@ -14,3 +14,11 @@ anyhow = "1.0"
 thiserror = "2.0"
 dirs = "5"
 arboard = "3.6"
+age = "0.11"
+reqwest = { version = "0.13", default-features = false, features = ["blocking", "cookies", "rustls"] }
+postcard = { version = "1", features = ["alloc"] }
+bech32 = "0.9"
+base64 = "0.22"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+gethostname = "0.5"
