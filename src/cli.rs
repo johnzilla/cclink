@@ -1,9 +1,9 @@
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "cclink", version, about = "Secure session handoff via Pubky")]
+#[command(name = "cclink", version, about = "Hand off a Claude Code session to another machine via Pubky")]
 pub struct Cli {
-    /// Optional session ID to publish (auto-discovers most recent if omitted)
+    /// Claude Code session ID to publish (auto-discovers most recent if omitted)
     #[arg(value_name = "SESSION_ID")]
     pub session_id: Option<String>,
 
@@ -25,7 +25,7 @@ pub enum Commands {
     Init(InitArgs),
     /// Show identity (public key, homeserver, fingerprint)
     Whoami,
-    /// Pick up a session handoff from the homeserver
+    /// Pick up a Claude Code session handoff from the homeserver
     Pickup(PickupArgs),
 }
 
@@ -46,7 +46,7 @@ pub struct InitArgs {
 
 #[derive(Parser)]
 pub struct PickupArgs {
-    /// z32-encoded public key of the handoff publisher (defaults to own key)
+    /// z32-encoded public key of the Claude Code session publisher (defaults to own key)
     #[arg(value_name = "PUBKEY")]
     pub pubkey: Option<String>,
 
