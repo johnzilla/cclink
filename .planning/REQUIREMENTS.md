@@ -17,16 +17,16 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Session Discovery
 
 - [x] **SESS-01**: CLI can discover the most recent session ID from `~/.claude/sessions/`
-- [ ] **SESS-02**: User can provide an explicit session ID as a CLI argument
+- [x] **SESS-02**: User can provide an explicit session ID as a CLI argument
 
 ### Publishing
 
-- [ ] **PUB-01**: User can publish an encrypted handoff record to their Pubky homeserver via `cclink` or `cclink <session-id>`
+- [x] **PUB-01**: User can publish an encrypted handoff record to their Pubky homeserver via `cclink` or `cclink <session-id>`
 - [x] **PUB-02**: Handoff record includes hostname, project path, creation timestamp, and TTL
 - [x] **PUB-03**: Session ID is age-encrypted to the creator's own X25519 key (derived from Ed25519)
-- [ ] **PUB-04**: User can set a custom TTL via `--ttl` (default 8 hours)
+- [x] **PUB-04**: User can set a custom TTL via `--ttl` (default 8 hours)
 - [x] **PUB-05**: A `latest.json` pointer is updated on each publish
-- [ ] **PUB-06**: Terminal QR code is rendered after successful publish
+- [x] **PUB-06**: Terminal QR code is rendered after successful publish
 
 ### Retrieval
 
@@ -97,13 +97,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | KEY-03 | Phase 1 | Complete |
 | KEY-04 | Phase 1 | Complete |
 | SESS-01 | Phase 3 | Complete |
-| SESS-02 | Phase 3 | Pending |
-| PUB-01 | Phase 3 | Pending |
+| SESS-02 | Phase 3 | Complete |
+| PUB-01 | Phase 3 | Complete |
 | PUB-02 | Phase 2 | Complete |
 | PUB-03 | Phase 2 | Complete |
-| PUB-04 | Phase 3 | Pending |
+| PUB-04 | Phase 3 | Complete |
 | PUB-05 | Phase 2 | Complete |
-| PUB-06 | Phase 3 | Pending |
+| PUB-06 | Phase 3 | Complete |
 | RET-01 | Phase 3 | Pending |
 | RET-02 | Phase 3 | Pending |
 | RET-03 | Phase 3 | Pending |

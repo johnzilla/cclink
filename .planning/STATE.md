@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-21)
 
 **Core value:** Effortless, secure session handoff between devices: `cclink` on one machine, `cclink pickup` on another, you're back in your session.
-**Current focus:** Phase 3 (Core Commands) — IN PROGRESS (1 of 3 plans done)
+**Current focus:** Phase 3 (Core Commands) — IN PROGRESS (2 of 3 plans done)
 
 ## Current Position
 
 Phase: 3 of 5 (Core Commands) — IN PROGRESS
-Plan: 1 of 3 in current phase — COMPLETE
-Status: Ready for Plan 03-02 (publish command)
-Last activity: 2026-02-22 — Plan 03-01 complete (Phase 3 deps + session discovery: SessionInfo, discover_sessions(), 22 tests pass)
+Plan: 2 of 3 in current phase — COMPLETE
+Status: Ready for Plan 03-03 (pickup command)
+Last activity: 2026-02-22 — Plan 03-02 complete (CLI restructure + publish command: session discovery, age encrypt, record sign, homeserver upload, colored output, --qr, 22 tests pass)
 
-Progress: [███████░░░] 62%
+Progress: [████████░░] 72%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
+- Total plans completed: 6
 - Average duration: 2.2 min
-- Total execution time: 12 min
+- Total execution time: 14 min
 
 **By Phase:**
 
@@ -29,10 +29,10 @@ Progress: [███████░░░] 62%
 |-------|-------|-------|----------|
 | 01-foundation-and-key-management | 2 | 5 min | 2.5 min |
 | 02-crypto-and-transport | 3 | 9 min | 3 min |
-| 03-core-commands | 1 | 2 min | 2 min |
+| 03-core-commands | 2 | 4 min | 2 min |
 
 **Recent Trend:**
-- Last 5 plans: 2.4 min
+- Last 5 plans: 2.2 min
 - Trend: stable
 
 *Updated after each plan completion*
@@ -66,6 +66,8 @@ Recent decisions affecting current work:
 - [Phase 03-core-commands]: cwd must be read from JSONL progress record; directory names use lossy encoding (03-01)
 - [Phase 03-core-commands]: 24-hour mtime cutoff defines active sessions — consistent with TTL default 86400s (03-01)
 - [Phase 03-core-commands]: SessionInfo derives Debug — required for test assertions with {:?} format (03-01)
+- [Phase 03-core-commands]: owo_colors chained methods (.green().bold()) return references to temporaries — use single color method per if_supports_color call (03-02)
+- [Phase 03-core-commands]: Publish path uses only ed25519_to_x25519_public (recipient); ed25519_to_x25519_secret only needed for decrypt in pickup (03-02)
 
 ### Pending Todos
 
@@ -79,5 +81,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 03-01-PLAN.md (Phase 3 deps + session discovery: owo-colors, dialoguer, qr2term, backoff, SessionInfo, discover_sessions(), 22 tests pass)
+Stopped at: Completed 03-02-PLAN.md (CLI restructure + publish command: session discovery, age encrypt, record sign, homeserver upload, colored output, --qr, 22 tests pass)
 Resume file: None
