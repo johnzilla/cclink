@@ -91,7 +91,7 @@ Plans:
   3. CI runs round-trip encryption tests (encrypt-then-decrypt for every code path) and fails the build if any key material appears in plaintext in test output
 **Plans:** 2/2 plans complete
 Plans:
-- [ ] 05-01-PLAN.md — Integration tests: round-trip encryption for all code paths and plaintext leak detection
+- [x] 05-01-PLAN.md — Integration tests: round-trip encryption for all code paths and plaintext leak detection
 - [ ] 05-02-PLAN.md — CI/CD workflows, POSIX sh installer, and Cargo.toml crates.io metadata
 
 ## Progress

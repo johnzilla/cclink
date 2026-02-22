@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-21)
 
 **Core value:** Effortless, secure session handoff between devices: `cclink` on one machine, `cclink pickup` on another, you're back in your session.
-**Current focus:** Phase 4 (Advanced Encryption and Management) — Complete; Phase 5 (Polish and Release) is next
+**Current focus:** Phase 5 (Release and Distribution) — Plan 01 complete; Plans 02 and 03 remaining
 
 ## Current Position
 
-Phase: 4 of 5 (Advanced Encryption and Management) — COMPLETE (all 3 plans done)
-Plan: 3 of 3 in current phase — ALL COMPLETE
-Status: All Phase 4 plans complete: 04-01 (primitives), 04-02 (share/burn publish/pickup), 04-03 (list/revoke)
-Last activity: 2026-02-22 — Plan 04-02 complete (--share + --burn publish/pickup, 4 pickup scenarios, burn-after-read)
+Phase: 5 of 5 (Release and Distribution)
+Plan: 1 of 3 in current phase — COMPLETE
+Status: Phase 5 Plan 01 complete: integration tests for all 4 encryption code paths + plaintext leak detection (7 tests)
+Last activity: 2026-02-22 — Plan 05-01 complete (integration_round_trip: 4 tests, plaintext_leak: 3 tests, src/lib.rs)
 
-Progress: [██████████] 95%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
@@ -40,6 +40,7 @@ Progress: [██████████] 95%
 | Phase 04-advanced-encryption-and-management P01 | 4 | 3 tasks | 9 files |
 | Phase 04-advanced-encryption-and-management P03 | 3 | 2 tasks | 2 files |
 | Phase 04-advanced-encryption-and-management P02 | 2 | 2 tasks | 2 files |
+| Phase 05-release-and-distribution P01 | 2 | 2 tasks | 4 files |
 | Phase 05-release-and-distribution P02 | 2 | 3 tasks | 4 files |
 
 ## Accumulated Context
@@ -86,6 +87,9 @@ Recent decisions affecting current work:
 - [Phase 04-advanced-encryption-and-management]: Corrupt record in single-token revoke path uses delete-anyway prompt rather than hard-fail
 - [Phase 04-advanced-encryption-and-management]: burn-after-read only on self-pickup: recipient cannot auth to delete publisher record; cross-user burn records expire via TTL
 - [Phase 04-advanced-encryption-and-management]: token derived from record.created_at.to_string() in pickup — consistent with transport publish() convention, avoids restructuring retry closure return
+- [Phase 05-release-and-distribution]: src/lib.rs re-exports only crypto/record/transport/error/keys — cli/commands/session omitted as they depend on filesystem/stdin/stdout and are not needed by crypto integration tests
+- [Phase 05-release-and-distribution]: burn flag confirmed metadata-only in integration test — burn round-trip uses identical crypto path as self-encrypt (no crypto-level difference)
+- [Phase 05-release-and-distribution]: plaintext leak tests use dual-check: String::from_utf8_lossy scan + .windows(n) byte scan — defense-in-depth against both string reinterpretation and raw byte leaks
 - [Phase 05-release-and-distribution]: Human-readable artifact names (cclink-linux-x86_64) via matrix artifact_name field, not Rust target triples
 - [Phase 05-release-and-distribution]: install.sh targets POSIX sh (not bash) with set -eu for maximum portability
 - [Phase 05-release-and-distribution]: SHA256 verification: sha256sum first, shasum -a 256 fallback for macOS compatibility
@@ -103,5 +107,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 04-02-PLAN.md (--share + --burn publish/pickup: 4 pickup scenarios, burn-after-read DELETE, 33 tests pass) and 04-03-PLAN.md (cclink list with comfy-table, cclink revoke with single/batch confirmation prompts, 34 tests pass)
+Stopped at: Completed 05-01-PLAN.md (integration tests: 4 round-trip encryption tests + 3 plaintext leak tests, src/lib.rs, httpmock dev-dep, 40 total tests pass)
 Resume file: None
