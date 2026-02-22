@@ -16,4 +16,10 @@ pub enum CclinkError {
 
     #[error("Cannot determine home directory")]
     HomeDirNotFound,
+
+    #[error("Signature verification failed: {0}")]
+    SignatureVerificationFailed(String),
+
+    #[error("Record deserialization failed: {0}")]
+    RecordDeserializationFailed(String),
 }

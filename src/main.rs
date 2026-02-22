@@ -3,6 +3,7 @@ mod commands;
 mod crypto;
 mod error;
 mod keys;
+mod record;
 
 use clap::Parser;
 use cli::{Cli, Commands};
