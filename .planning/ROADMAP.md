@@ -75,7 +75,11 @@ Plans:
   2. User runs `cclink --burn` and the record is deleted from the homeserver after the first successful retrieval
   3. User runs `cclink list` and sees token, project, age, TTL remaining, and burn status for all active records
   4. User runs `cclink revoke <token>` and the specific record is removed; `cclink revoke --all` removes all records
-**Plans**: TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 04-01-PLAN.md — Extend record/crypto/transport/CLI with Phase 4 primitives (burn/recipient fields, z32 recipient, DELETE/LIST, new subcommands)
+- [ ] 04-02-PLAN.md — Implement --share and --burn in publish, extend pickup for shared records and burn-after-read
+- [ ] 04-03-PLAN.md — Implement cclink list and cclink revoke commands
 
 ### Phase 5: Release and Distribution
 **Goal**: CCLink is distributable as a self-contained binary with automated release artifacts
@@ -97,5 +101,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Foundation and Key Management | 1/2 | Complete    | 2026-02-22 |
 | 2. Crypto and Transport | 3/3 | Complete   | 2026-02-22 |
 | 3. Core Commands | 4/4 | Complete   | 2026-02-22 |
-| 4. Advanced Encryption and Management | 0/TBD | Not started | - |
+| 4. Advanced Encryption and Management | 0/3 | Not started | - |
 | 5. Release and Distribution | 0/TBD | Not started | - |
