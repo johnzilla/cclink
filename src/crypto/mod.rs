@@ -53,6 +53,18 @@ pub fn age_recipient(x25519_pubkey: &[u8; 32]) -> age::x25519::Recipient {
         .expect("valid age recipient string from correctly encoded X25519 Montgomery point")
 }
 
+/// Convert a z32-encoded Ed25519 public key string to an age X25519 Recipient.
+///
+/// Uses the same conversion path as `ed25519_to_x25519_public()` but starts from
+/// a parsed `pkarr::PublicKey` instead of a full Keypair. This is used for
+/// `--share <pubkey>` encryption to encrypt for a specific recipient.
+pub fn recipient_from_z32(z32: &str) -> anyhow::Result<age::x25519::Recipient> {
+    let pubkey = pkarr::PublicKey::try_from(z32)
+        .map_err(|e| anyhow::anyhow!("invalid recipient pubkey '{}': {}", z32, e))?;
+    let x25519_bytes: [u8; 32] = pubkey.verifying_key().to_montgomery().to_bytes();
+    Ok(age_recipient(&x25519_bytes))
+}
+
 /// Encrypt plaintext with an age X25519 Recipient.
 ///
 /// Returns the full age ciphertext including the age header (which contains
@@ -159,5 +171,39 @@ mod tests {
         // Decrypting with wrong key must fail
         let result = age_decrypt(&ciphertext, &identity_b);
         assert!(result.is_err(), "decryption with wrong key must return an error");
+    }
+
+    #[test]
+    fn test_recipient_from_z32_round_trip() {
+        // Create a keypair, derive z32 pubkey, convert to age Recipient
+        let keypair = fixed_keypair();
+        let z32 = keypair.public_key().to_z32();
+
+        // Convert z32 to recipient — should succeed
+        let recipient = recipient_from_z32(&z32).expect("recipient_from_z32 should succeed with valid z32");
+
+        // Encrypt to the derived recipient
+        let plaintext = b"round-trip test";
+        let ciphertext = age_encrypt(plaintext, &recipient).expect("encrypt should succeed");
+
+        // Decrypt with the keypair's identity — should succeed, proving the recipient is correct
+        let secret = ed25519_to_x25519_secret(&keypair);
+        let identity = age_identity(&secret);
+        let decrypted = age_decrypt(&ciphertext, &identity).expect("decrypt should succeed");
+
+        assert_eq!(decrypted, plaintext, "decrypted plaintext must match original");
+    }
+
+    #[test]
+    fn test_recipient_from_z32_invalid_key() {
+        let result = recipient_from_z32("not-a-valid-z32-key");
+        assert!(result.is_err(), "recipient_from_z32 must return Err for invalid z32 key");
+
+        let err_str = result.unwrap_err().to_string();
+        assert!(
+            err_str.contains("invalid recipient pubkey"),
+            "error should mention invalid recipient pubkey, got: {}",
+            err_str
+        );
     }
 }

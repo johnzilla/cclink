@@ -293,6 +293,52 @@ impl HomeserverClient {
         Ok(token)
     }
 
+    /// DELETE a HandoffRecord at `/pub/cclink/{token}`.
+    ///
+    /// Treats 404 as success (idempotent — record already deleted).
+    /// Must be called AFTER `signin()` — the session cookie is forwarded automatically.
+    pub fn delete_record(&self, token: &str) -> anyhow::Result<()> {
+        let url = format!("https://{}/pub/cclink/{}", self.homeserver, token);
+        let response = self.client.delete(&url).send()
+            .map_err(|e| anyhow::anyhow!("DELETE request failed: {}", e))?;
+        if response.status() == reqwest::StatusCode::NOT_FOUND {
+            return Ok(()); // Already deleted — idempotent
+        }
+        if !response.status().is_success() {
+            let status = response.status();
+            anyhow::bail!("DELETE failed (status {}): {}", status, token);
+        }
+        Ok(())
+    }
+
+    /// List all record tokens under `/pub/cclink/`.
+    ///
+    /// Returns only numeric timestamp tokens — filters out "latest" and any non-numeric keys.
+    /// Must be called AFTER `signin()` — the directory listing requires an authenticated session.
+    /// Returns an empty vec if no records are published (404).
+    pub fn list_record_tokens(&self) -> anyhow::Result<Vec<String>> {
+        let url = format!("https://{}/pub/cclink/", self.homeserver);
+        let response = self.client.get(&url).send()
+            .map_err(|e| anyhow::anyhow!("LIST request failed: {}", e))?;
+        if response.status() == reqwest::StatusCode::NOT_FOUND {
+            return Ok(vec![]);
+        }
+        if !response.status().is_success() {
+            anyhow::bail!("LIST failed (status {})", response.status());
+        }
+        let body = response.text()
+            .map_err(|e| anyhow::anyhow!("failed to read LIST response: {}", e))?;
+        let tokens: Vec<String> = body.lines()
+            .filter(|l| !l.is_empty())
+            .filter_map(|line| {
+                line.split("/pub/cclink/").nth(1)
+                    .map(|t| t.trim_end_matches('/').to_string())
+            })
+            .filter(|t| t.parse::<u64>().is_ok()) // Filter out "latest" and non-numeric keys
+            .collect();
+        Ok(tokens)
+    }
+
     // ── Private helpers ────────────────────────────────────────────────────
 
     /// Perform a GET request, returning response body bytes.
