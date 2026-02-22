@@ -153,7 +153,45 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
 
     let session_id: String;
 
-    if is_cross_user {
+    // ── PIN-protected record detection ────────────────────────────────────
+    if let Some(ref pin_salt_b64) = record.pin_salt {
+        // Non-interactive guard: PIN prompt requires a terminal
+        if !std::io::stdin().is_terminal() {
+            anyhow::bail!("PIN-protected handoff requires interactive terminal for PIN entry");
+        }
+
+        // PIN-protected record: prompt for PIN and decrypt
+        let salt_bytes = base64::engine::general_purpose::STANDARD
+            .decode(pin_salt_b64)
+            .map_err(|e| anyhow::anyhow!("invalid pin_salt base64: {}", e))?;
+        let salt: [u8; 32] = salt_bytes
+            .try_into()
+            .map_err(|_| anyhow::anyhow!("pin_salt must be exactly 32 bytes"))?;
+
+        let ciphertext = base64::engine::general_purpose::STANDARD
+            .decode(&record.blob)
+            .map_err(|e| anyhow::anyhow!("failed to decode blob: {}", e))?;
+
+        let pin = dialoguer::Password::new()
+            .with_prompt("Enter PIN")
+            .interact()
+            .map_err(|e| anyhow::anyhow!("PIN prompt failed: {}", e))?;
+
+        match crate::crypto::pin_decrypt(&ciphertext, &pin, &salt) {
+            Ok(plaintext) => {
+                session_id = String::from_utf8(plaintext)
+                    .map_err(|e| anyhow::anyhow!("session ID is not valid UTF-8: {}", e))?;
+            }
+            Err(_) => {
+                eprintln!(
+                    "{}",
+                    "Error: Incorrect PIN. Cannot decrypt this handoff."
+                        .if_supports_color(Stdout, |t| t.red())
+                );
+                anyhow::bail!("Incorrect PIN — decryption failed");
+            }
+        }
+    } else if is_cross_user {
         // Cross-user pickup: attempt decryption with own key.
         // If the record was encrypted for us (--share), decryption succeeds.
         // If not (self-encrypted or shared with someone else), show metadata.

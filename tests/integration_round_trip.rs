@@ -13,7 +13,7 @@
 
 use cclink::crypto::{
     age_decrypt, age_encrypt, age_identity, age_recipient, ed25519_to_x25519_public,
-    ed25519_to_x25519_secret,
+    ed25519_to_x25519_secret, pin_decrypt, pin_encrypt,
 };
 use cclink::record::{sign_record, verify_record, HandoffRecord, HandoffRecordSignable};
 
@@ -219,6 +219,70 @@ fn test_signed_burn_tamper_detection() {
     assert!(
         result.is_err(),
         "tampered burn flag must cause signature verification failure"
+    );
+}
+
+// ── Test 7: PIN encrypt/decrypt round-trip ────────────────────────────────
+
+/// Encrypt a session ID using pin_encrypt with PIN "1234", then:
+///   - Decrypt with same PIN and returned salt — assert plaintext matches.
+///   - Decrypt with wrong PIN "9999" — assert Err (wrong PIN rejected).
+#[test]
+fn test_pin_encrypt_round_trip() {
+    let session_id = b"sess-pin-round-trip-test-abc123";
+
+    // Encrypt with PIN "1234"
+    let (ciphertext, salt) = pin_encrypt(session_id, "1234")
+        .expect("pin_encrypt should succeed");
+    assert!(!ciphertext.is_empty(), "ciphertext must not be empty");
+
+    // Correct PIN decrypts successfully
+    let decrypted = pin_decrypt(&ciphertext, "1234", &salt)
+        .expect("pin_decrypt should succeed with correct PIN");
+    assert_eq!(
+        decrypted.as_slice(),
+        session_id,
+        "pin_decrypt with correct PIN must return original session ID"
+    );
+
+    // Wrong PIN returns Err
+    let result = pin_decrypt(&ciphertext, "9999", &salt);
+    assert!(
+        result.is_err(),
+        "pin_decrypt with wrong PIN must return an error"
+    );
+}
+
+// ── Test 8: PIN record — owner keypair cannot decrypt ─────────────────────
+
+/// Proves that the owner's age identity (derived from their Ed25519 keypair) cannot
+/// decrypt a PIN-protected record. After confirming keypair decryption fails,
+/// verify that the correct PIN succeeds — demonstrating PIN-derived key isolation.
+#[test]
+fn test_pin_record_owner_cannot_decrypt() {
+    let session_id = b"sess-pin-owner-isolation-test";
+
+    // Encrypt with PIN "5678"
+    let (ciphertext, salt) = pin_encrypt(session_id, "5678")
+        .expect("pin_encrypt should succeed");
+
+    // Attempt decryption with owner's keypair identity — must fail
+    let owner_keypair = keypair_a();
+    let owner_secret = ed25519_to_x25519_secret(&owner_keypair);
+    let owner_identity = age_identity(&owner_secret);
+    let owner_result = age_decrypt(&ciphertext, &owner_identity);
+    assert!(
+        owner_result.is_err(),
+        "owner keypair alone must NOT decrypt PIN-protected data"
+    );
+
+    // Correct PIN decrypts successfully — proving PIN-derived key isolation
+    let decrypted = pin_decrypt(&ciphertext, "5678", &salt)
+        .expect("pin_decrypt with correct PIN should succeed");
+    assert_eq!(
+        decrypted.as_slice(),
+        session_id,
+        "pin_decrypt with correct PIN must return original session ID"
     );
 }
 
