@@ -92,37 +92,37 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| KEY-01 | — | Pending |
-| KEY-02 | — | Pending |
-| KEY-03 | — | Pending |
-| KEY-04 | — | Pending |
-| SESS-01 | — | Pending |
-| SESS-02 | — | Pending |
-| PUB-01 | — | Pending |
-| PUB-02 | — | Pending |
-| PUB-03 | — | Pending |
-| PUB-04 | — | Pending |
-| PUB-05 | — | Pending |
-| PUB-06 | — | Pending |
-| RET-01 | — | Pending |
-| RET-02 | — | Pending |
-| RET-03 | — | Pending |
-| RET-04 | — | Pending |
-| RET-05 | — | Pending |
-| RET-06 | — | Pending |
-| ENC-01 | — | Pending |
-| ENC-02 | — | Pending |
-| MGT-01 | — | Pending |
-| MGT-02 | — | Pending |
-| MGT-03 | — | Pending |
-| UX-01 | — | Pending |
-| UX-02 | — | Pending |
+| KEY-01 | Phase 1 | Pending |
+| KEY-02 | Phase 1 | Pending |
+| KEY-03 | Phase 1 | Pending |
+| KEY-04 | Phase 1 | Pending |
+| SESS-01 | Phase 3 | Pending |
+| SESS-02 | Phase 3 | Pending |
+| PUB-01 | Phase 3 | Pending |
+| PUB-02 | Phase 2 | Pending |
+| PUB-03 | Phase 2 | Pending |
+| PUB-04 | Phase 3 | Pending |
+| PUB-05 | Phase 2 | Pending |
+| PUB-06 | Phase 3 | Pending |
+| RET-01 | Phase 3 | Pending |
+| RET-02 | Phase 3 | Pending |
+| RET-03 | Phase 3 | Pending |
+| RET-04 | Phase 3 | Pending |
+| RET-05 | Phase 3 | Pending |
+| RET-06 | Phase 3 | Pending |
+| ENC-01 | Phase 4 | Pending |
+| ENC-02 | Phase 4 | Pending |
+| MGT-01 | Phase 4 | Pending |
+| MGT-02 | Phase 4 | Pending |
+| MGT-03 | Phase 4 | Pending |
+| UX-01 | Phase 3 | Pending |
+| UX-02 | Phase 2 | Pending |
 
 **Coverage:**
 - v1 requirements: 25 total
-- Mapped to phases: 0
-- Unmapped: 25 ⚠️
+- Mapped to phases: 25
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-02-21*
-*Last updated: 2026-02-21 after initial definition*
+*Last updated: 2026-02-21 after roadmap creation*
