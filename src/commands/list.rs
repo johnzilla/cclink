@@ -16,41 +16,24 @@ pub fn run_list() -> anyhow::Result<()> {
     let homeserver = crate::keys::store::read_homeserver()?;
     let client = crate::transport::HomeserverClient::new(&homeserver)?;
 
-    // ── 2. Sign in and list tokens ────────────────────────────────────────
+    // ── 2. Sign in (lazy — will only POST /session once per client) ──────
     client.signin(&keypair)?;
-    let tokens = client.list_record_tokens()?;
 
-    if tokens.is_empty() {
-        println!(
-            "{}",
-            "No active handoffs. Publish one with cclink."
-                .if_supports_color(Stdout, |t| t.yellow())
-        );
-        return Ok(());
-    }
-
-    // ── 3. Fetch each record, filter expired ─────────────────────────────
+    // ── 3. Fetch all records in one transport call, filter expired ────────
     let now_secs = std::time::SystemTime::now()
         .duration_since(std::time::SystemTime::UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0);
 
-    let mut active_records: Vec<(String, crate::record::HandoffRecord)> = Vec::new();
-    for token in &tokens {
-        match client.get_record(token, &keypair.public_key()) {
-            Ok(record) => {
-                let expires_at = record.created_at.saturating_add(record.ttl);
-                if now_secs < expires_at {
-                    active_records.push((token.clone(), record));
-                }
-            }
-            Err(_) => {
-                // Skip records that fail to fetch or verify — they may have been
-                // tampered with or partially written. Silent skip is correct.
-                continue;
-            }
-        }
-    }
+    let all_records = client.get_all_records(&keypair.public_key())?;
+
+    let active_records: Vec<(String, crate::record::HandoffRecord)> = all_records
+        .into_iter()
+        .filter(|(_, record)| {
+            let expires_at = record.created_at.saturating_add(record.ttl);
+            now_secs < expires_at
+        })
+        .collect();
 
     if active_records.is_empty() {
         println!(
