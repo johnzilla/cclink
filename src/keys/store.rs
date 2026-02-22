@@ -23,6 +23,12 @@ pub fn ensure_key_dir() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Write a keypair to disk atomically (write to temp then rename) and set 0600 permissions.
+///
+/// Uses a temp file in the same directory to ensure atomic replacement on POSIX systems.
+/// After a successful rename, the file permissions are explicitly set to 0600 so that
+/// the secret key is only readable by the owner — cclink enforces this directly rather
+/// than relying on pkarr or the OS umask.
 pub fn write_keypair_atomic(keypair: &pkarr::Keypair, dest: &Path) -> anyhow::Result<()> {
     let parent = dest
         .parent()
@@ -38,6 +44,15 @@ pub fn write_keypair_atomic(keypair: &pkarr::Keypair, dest: &Path) -> anyhow::Re
         // Attempt cleanup of temp file on rename failure
         let _ = std::fs::remove_file(&tmp);
         return Err(CclinkError::AtomicWriteFailed(e).into());
+    }
+
+    // Explicitly enforce 0600 after the atomic rename. We do not rely on pkarr or
+    // the OS umask to set the correct permissions — cclink owns this guarantee (SEC-02).
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(dest, std::fs::Permissions::from_mode(0o600))
+            .with_context(|| format!("Failed to set 0600 permissions on {}", dest.display()))?;
     }
 
     Ok(())
@@ -60,11 +75,19 @@ pub fn read_homeserver() -> anyhow::Result<String> {
     Ok(content.trim().to_string())
 }
 
+/// Load the keypair from the default secret key path.
+///
+/// Performs a permission check before reading the key file: if the file has permissions
+/// other than 0600 the load is rejected with a clear error message that includes the
+/// remediation command. This check is cclink's own enforcement (SEC-02) and is not
+/// delegated to pkarr.
 pub fn load_keypair() -> anyhow::Result<pkarr::Keypair> {
     let path = secret_key_path()?;
     if !path.exists() {
         return Err(CclinkError::NoKeypairFound.into());
     }
+    // Enforce 0600 permissions before reading key material (SEC-02).
+    check_key_permissions(&path)?;
     pkarr::Keypair::from_secret_key_file(&path)
         .map_err(|e| anyhow::anyhow!("Failed to load keypair: {}", e))
 }
@@ -74,10 +97,12 @@ pub fn keypair_exists() -> anyhow::Result<bool> {
     Ok(path.exists())
 }
 
-/// Check that a key file has owner-only (0600) permissions.
+/// Check that the key file has exactly 0600 permissions (Unix only).
 ///
-/// Returns an error describing the permissions issue if the file mode is not 0600.
-/// Only compiled on Unix platforms.
+/// Returns an error if the file permissions allow group or other access.
+/// This is a security check — secret key files must not be readable by
+/// other users on the system. The error message includes the remediation
+/// command (`chmod 600 <path>`) so users can fix the issue immediately.
 #[cfg(unix)]
 pub fn check_key_permissions(path: &Path) -> anyhow::Result<()> {
     use std::os::unix::fs::PermissionsExt;
@@ -85,13 +110,19 @@ pub fn check_key_permissions(path: &Path) -> anyhow::Result<()> {
         .with_context(|| format!("Failed to read metadata for {}", path.display()))?;
     let mode = metadata.permissions().mode() & 0o777;
     if mode != 0o600 {
-        return Err(anyhow::anyhow!(
-            "Key file {} has insecure permissions {:04o}; expected 0600. Run: chmod 600 {}",
+        anyhow::bail!(
+            "Key file {} has insecure permissions {:04o} (expected 0600). Fix with: chmod 600 {}",
             path.display(),
             mode,
             path.display()
-        ));
+        );
     }
+    Ok(())
+}
+
+/// No-op permission check on non-Unix platforms (Windows, WASM, etc.).
+#[cfg(not(unix))]
+pub fn check_key_permissions(_path: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 

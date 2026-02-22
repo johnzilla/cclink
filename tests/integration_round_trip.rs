@@ -1,10 +1,13 @@
-/// Integration tests: encryption round-trip for all four code paths.
+/// Integration tests: encryption round-trip for all four code paths, plus v1.1
+/// tamper detection for burn and recipient fields.
 ///
 /// Tests cover:
 ///   1. Self-encrypt  — own key encrypts, own key decrypts
 ///   2. Shared-encrypt — recipient's key encrypts, recipient's key decrypts; sender cannot decrypt
-///   3. Burn round-trip — burn flag is metadata only; crypto path is identical to self-encrypt
+///   3. Burn round-trip — burn flag is in signed envelope; crypto path is identical to self-encrypt
 ///   4. Shared+burn    — combines shared encrypt + burn flag; recipient decrypts; sender cannot
+///   5. Signed burn tamper detection — tamping burn after signing causes verify_record to fail
+///   6. Signed recipient tamper detection — tampering recipient after signing causes verify_record to fail
 ///
 /// All tests are `#[test]` (not `#[tokio::test]`) — no async, no network access.
 
@@ -12,6 +15,7 @@ use cclink::crypto::{
     age_decrypt, age_encrypt, age_identity, age_recipient, ed25519_to_x25519_public,
     ed25519_to_x25519_secret,
 };
+use cclink::record::{sign_record, verify_record, HandoffRecord, HandoffRecordSignable};
 
 /// Fixed keypair with seed [42u8; 32] — used for the "self" / sender role.
 fn keypair_a() -> pkarr::Keypair {
@@ -162,5 +166,107 @@ fn test_shared_burn_encrypt_round_trip() {
     assert!(
         sender_result.is_err(),
         "sender must NOT decrypt a shared+burn message encrypted for the recipient"
+    );
+}
+
+// ── Test 5: Signed burn tamper detection ───────────────────────────────────
+
+/// Build a full signed HandoffRecord with burn=false. Verify it passes.
+/// Then tamper burn=true. Verify the signature check fails.
+/// Proves that burn is part of the signed envelope in v1.1.
+#[test]
+fn test_signed_burn_tamper_detection() {
+    let keypair = keypair_a();
+
+    // Build a signed record with burn=false
+    let signable = HandoffRecordSignable {
+        blob: "dGVzdGJsb2I=".to_string(),
+        burn: false,
+        created_at: 1_700_000_000,
+        hostname: "testhost".to_string(),
+        project: "/home/user/project".to_string(),
+        pubkey: keypair.public_key().to_z32(),
+        recipient: None,
+        ttl: 3600,
+    };
+    let signature = sign_record(&signable, &keypair).expect("sign_record should succeed");
+
+    let record = HandoffRecord {
+        blob: signable.blob.clone(),
+        burn: false,
+        created_at: signable.created_at,
+        hostname: signable.hostname.clone(),
+        project: signable.project.clone(),
+        pubkey: signable.pubkey.clone(),
+        recipient: None,
+        signature: signature.clone(),
+        ttl: signable.ttl,
+    };
+
+    // Valid record should verify
+    verify_record(&record, &keypair.public_key())
+        .expect("valid record should pass signature verification");
+
+    // Tamper: flip burn to true
+    let tampered = HandoffRecord {
+        burn: true, // tampered!
+        ..record
+    };
+
+    let result = verify_record(&tampered, &keypair.public_key());
+    assert!(
+        result.is_err(),
+        "tampered burn flag must cause signature verification failure"
+    );
+}
+
+// ── Test 6: Signed recipient tamper detection ──────────────────────────────
+
+/// Build a full signed HandoffRecord with recipient=None. Verify it passes.
+/// Then tamper recipient=Some("attacker"). Verify the signature check fails.
+/// Proves that recipient is part of the signed envelope in v1.1.
+#[test]
+fn test_signed_recipient_tamper_detection() {
+    let keypair = keypair_a();
+
+    // Build a signed record with recipient=None (self-encrypted)
+    let signable = HandoffRecordSignable {
+        blob: "dGVzdGJsb2I=".to_string(),
+        burn: false,
+        created_at: 1_700_000_000,
+        hostname: "testhost".to_string(),
+        project: "/home/user/project".to_string(),
+        pubkey: keypair.public_key().to_z32(),
+        recipient: None,
+        ttl: 3600,
+    };
+    let signature = sign_record(&signable, &keypair).expect("sign_record should succeed");
+
+    let record = HandoffRecord {
+        blob: signable.blob.clone(),
+        burn: false,
+        created_at: signable.created_at,
+        hostname: signable.hostname.clone(),
+        project: signable.project.clone(),
+        pubkey: signable.pubkey.clone(),
+        recipient: None,
+        signature: signature.clone(),
+        ttl: signable.ttl,
+    };
+
+    // Valid record should verify
+    verify_record(&record, &keypair.public_key())
+        .expect("valid record should pass signature verification");
+
+    // Tamper: inject a recipient that was not in the original signable
+    let tampered = HandoffRecord {
+        recipient: Some("attacker-pubkey-z32encoded".to_string()), // tampered!
+        ..record
+    };
+
+    let result = verify_record(&tampered, &keypair.public_key());
+    assert!(
+        result.is_err(),
+        "tampered recipient must cause signature verification failure"
     );
 }
