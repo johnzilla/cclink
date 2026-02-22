@@ -145,11 +145,11 @@ pub fn run_publish(cli: &crate::cli::Cli) -> anyhow::Result<()> {
             format!("cclink pickup {}", own_pubkey).if_supports_color(Stdout, |t| t.bold())
         );
     } else {
-        // Self: existing pickup command using token
+        // Self: pickup resolves via the latest pointer; no token argument needed
         println!("  Run on another machine:");
         println!(
             "  {}",
-            format!("cclink pickup {}", token).if_supports_color(Stdout, |t| t.bold())
+            "cclink pickup".if_supports_color(Stdout, |t| t.bold())
         );
     }
     let hours = cli.ttl / 3600;
