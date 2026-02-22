@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-21)
 
 **Core value:** Effortless, secure session handoff between devices: `cclink` on one machine, `cclink pickup` on another, you're back in your session.
-**Current focus:** Phase 4 (Advanced Encryption and Management) — In Progress (3 of 3 plans done)
+**Current focus:** Phase 4 (Advanced Encryption and Management) — Complete; Phase 5 (Polish and Release) is next
 
 ## Current Position
 
-Phase: 4 of 5 (Advanced Encryption and Management) — In Progress (04-02 parallel, verify status)
-Plan: 3 of 3 in current phase — COMPLETE
-Status: Plans 04-01 and 04-03 complete; 04-02 (share/burn encryption) status unknown — may be parallel
-Last activity: 2026-02-22 — Plan 04-03 complete (cclink list with comfy-table, cclink revoke with confirmation prompts, 34 tests pass)
+Phase: 4 of 5 (Advanced Encryption and Management) — COMPLETE (all 3 plans done)
+Plan: 3 of 3 in current phase — ALL COMPLETE
+Status: All Phase 4 plans complete: 04-01 (primitives), 04-02 (share/burn publish/pickup), 04-03 (list/revoke)
+Last activity: 2026-02-22 — Plan 04-02 complete (--share + --burn publish/pickup, 4 pickup scenarios, burn-after-read)
 
 Progress: [██████████] 95%
 
@@ -39,6 +39,7 @@ Progress: [██████████] 95%
 | Phase 03-core-commands P04 | 2 | 2 tasks | 3 files |
 | Phase 04-advanced-encryption-and-management P01 | 4 | 3 tasks | 9 files |
 | Phase 04-advanced-encryption-and-management P03 | 3 | 2 tasks | 2 files |
+| Phase 04-advanced-encryption-and-management P02 | 2 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,8 @@ Recent decisions affecting current work:
 - [Phase 04-advanced-encryption-and-management]: recipient_from_z32 reuses existing age_recipient() + pkarr PublicKey::try_from path — no new crypto deps needed
 - [Phase 04-advanced-encryption-and-management]: human_duration is module-private in each command file (list.rs, pickup.rs) — not shared, per plan spec
 - [Phase 04-advanced-encryption-and-management]: Corrupt record in single-token revoke path uses delete-anyway prompt rather than hard-fail
+- [Phase 04-advanced-encryption-and-management]: burn-after-read only on self-pickup: recipient cannot auth to delete publisher record; cross-user burn records expire via TTL
+- [Phase 04-advanced-encryption-and-management]: token derived from record.created_at.to_string() in pickup — consistent with transport publish() convention, avoids restructuring retry closure return
 
 ### Pending Todos
 
@@ -95,5 +98,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 04-03-PLAN.md (cclink list with comfy-table, cclink revoke with single/batch confirmation prompts, 34 tests pass)
+Stopped at: Completed 04-02-PLAN.md (--share + --burn publish/pickup: 4 pickup scenarios, burn-after-read DELETE, 33 tests pass) and 04-03-PLAN.md (cclink list with comfy-table, cclink revoke with single/batch confirmation prompts, 34 tests pass)
 Resume file: None
