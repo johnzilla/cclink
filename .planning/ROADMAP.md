@@ -72,7 +72,7 @@ Plans:
   1. Running `cclink --burn --share <pubkey>` immediately errors with a clear message before any network call
   2. The success message after self-publish shows `cclink pickup` (not a raw token) as the retrieval command
   3. The PRD contains no references to `~/.cclink/` paths — all key storage references say `~/.pubky/`
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 Plans:
 - [x] 08-01-PLAN.md — CLI flag mutual exclusion, self-publish help text fix, PRD path cleanup (FUNC-01, FUNC-02, DOCS-01)
 
@@ -98,5 +98,5 @@ Plans:
 | 5. Release and Distribution | v1.0 | 2/2 | Complete | 2026-02-22 |
 | 6. Signed Record Format | 2/2 | Complete   | 2026-02-22 | - |
 | 7. Code Quality and Transport | 2/2 | Complete    | 2026-02-22 | - |
-| 8. CLI Fixes and Documentation | v1.1 | 1/1 | Complete | 2026-02-22 |
+| 8. CLI Fixes and Documentation | v1.1 | Complete    | 2026-02-22 | 2026-02-22 |
 | 9. PIN-Protected Handoffs | v1.1 | 0/? | Not started | - |
