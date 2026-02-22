@@ -15,6 +15,7 @@
 ///
 /// Signable region: bytes[65..] (confirmed from pubky-common-0.5.4/src/auth.rs)
 
+use std::cell::Cell;
 use std::time::{Duration, SystemTime};
 
 use crate::record::{HandoffRecord, LatestPointer};
@@ -102,10 +103,16 @@ pub fn build_auth_token(keypair: &pkarr::Keypair) -> anyhow::Result<Vec<u8>> {
 /// Wraps `reqwest::blocking::Client` with `cookie_store(true)` so that the
 /// session cookie acquired via `signin()` is automatically sent on subsequent
 /// PUT requests.
+///
+/// The `signed_in` flag ensures signin HTTP POST is called at most once per
+/// client lifetime, regardless of how many authenticated operations follow.
 pub struct HomeserverClient {
     client: reqwest::blocking::Client,
     /// Homeserver hostname, e.g. "pubky.app" (no scheme, no trailing slash).
     homeserver: String,
+    /// Tracks whether a session has been established. Uses Cell<bool> for
+    /// interior mutability so &self methods can update state without &mut self.
+    signed_in: Cell<bool>,
 }
 
 impl HomeserverClient {
@@ -126,13 +133,16 @@ impl HomeserverClient {
             .build()
             .map_err(|e| anyhow::anyhow!("failed to build HTTP client: {}", e))?;
 
-        Ok(Self { client, homeserver })
+        Ok(Self { client, homeserver, signed_in: Cell::new(false) })
     }
 
     /// Sign in to the homeserver with a Pubky AuthToken.
     ///
     /// POSTs the binary AuthToken to `/session`. The homeserver sets a session
     /// cookie that is automatically stored in the client's cookie jar.
+    ///
+    /// Sets the `signed_in` flag on success so that `ensure_signed_in()` will
+    /// skip subsequent calls within the same client lifetime.
     pub fn signin(&self, keypair: &pkarr::Keypair) -> anyhow::Result<()> {
         let token_bytes = build_auth_token(keypair)?;
         let url = format!("https://{}/session", self.homeserver);
@@ -154,6 +164,18 @@ impl HomeserverClient {
             );
         }
 
+        self.signed_in.set(true);
+        Ok(())
+    }
+
+    /// Ensure the client is signed in, calling `signin()` at most once per lifetime.
+    ///
+    /// Callers that need an authenticated session but don't want to force a fresh
+    /// signin (e.g., `publish()`) should use this instead of `signin()` directly.
+    fn ensure_signed_in(&self, keypair: &pkarr::Keypair) -> anyhow::Result<()> {
+        if !self.signed_in.get() {
+            self.signin(keypair)?;
+        }
         Ok(())
     }
 
@@ -273,8 +295,8 @@ impl HomeserverClient {
         let record_bytes = serde_json::to_vec(record)
             .map_err(|e| anyhow::anyhow!("failed to serialize record: {}", e))?;
 
-        // Sign in to the homeserver (acquires session cookie)
-        self.signin(keypair)?;
+        // Sign in to the homeserver (lazy — will only POST /session if not already signed in)
+        self.ensure_signed_in(keypair)?;
 
         // PUT the record
         self.put_record(&token, &record_bytes)?;
@@ -337,6 +359,40 @@ impl HomeserverClient {
             .filter(|t| t.parse::<u64>().is_ok()) // Filter out "latest" and non-numeric keys
             .collect();
         Ok(tokens)
+    }
+
+    /// Fetch all HandoffRecords for a given public key in one transport call.
+    ///
+    /// Calls `list_record_tokens()` to get all token strings, then fetches each
+    /// record individually via `get_record()`. Records that fail to fetch or verify
+    /// are silently skipped (consistent with list command behavior).
+    ///
+    /// NOTE: The Pubky homeserver has no native batch-get endpoint — its directory
+    /// listing returns only path names, not record content. True single-request
+    /// batching is not possible with the current protocol. The optimization here is
+    /// architectural: this method encapsulates the 1-listing + N-fetch pattern in the
+    /// transport layer so the command layer makes ONE call. If the homeserver later
+    /// supports batch GET, only this method changes.
+    pub fn get_all_records(
+        &self,
+        pubkey: &pkarr::PublicKey,
+    ) -> anyhow::Result<Vec<(String, HandoffRecord)>> {
+        let tokens = self.list_record_tokens()?;
+        if tokens.is_empty() {
+            return Ok(vec![]);
+        }
+        let mut results = Vec::new();
+        for token in &tokens {
+            match self.get_record(token, pubkey) {
+                Ok(record) => results.push((token.clone(), record)),
+                Err(_) => {
+                    // Skip records that fail to fetch or verify — they may have been
+                    // tampered with or partially written. Silent skip is correct.
+                    continue;
+                }
+            }
+        }
+        Ok(results)
     }
 
     // ── Private helpers ────────────────────────────────────────────────────
@@ -492,6 +548,30 @@ mod tests {
         assert_eq!(
             client.homeserver, "pubky.app",
             "https:// prefix should be stripped"
+        );
+    }
+
+    #[test]
+    fn test_ensure_signed_in_flag() {
+        // New client should start with signed_in = false
+        let client = HomeserverClient::new("pubky.app").expect("client build failed");
+        assert!(
+            !client.signed_in.get(),
+            "signed_in should be false on new client"
+        );
+
+        // Manually set the flag to simulate a successful signin
+        client.signed_in.set(true);
+        assert!(
+            client.signed_in.get(),
+            "signed_in should be true after setting"
+        );
+
+        // Reset and verify
+        client.signed_in.set(false);
+        assert!(
+            !client.signed_in.get(),
+            "signed_in should be false after reset"
         );
     }
 
