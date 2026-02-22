@@ -92,11 +92,22 @@ fi
 # Extract binary
 tar xzf "${TMP_DIR}/${ARTIFACT}.tar.gz" -C "${TMP_DIR}"
 
-# Install: try ~/.local/bin first
+# Install: try ~/.local/bin first, fall back to /usr/local/bin with sudo
 INSTALL_DIR="$HOME/.local/bin"
-mkdir -p "$INSTALL_DIR"
-cp "${TMP_DIR}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
-chmod +x "${INSTALL_DIR}/${BINARY}"
+if mkdir -p "$INSTALL_DIR" 2>/dev/null; then
+  cp "${TMP_DIR}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
+  chmod +x "${INSTALL_DIR}/${BINARY}"
+else
+  INSTALL_DIR="/usr/local/bin"
+  printf "Cannot create ~/.local/bin, installing to %s (may require sudo)\n" "$INSTALL_DIR"
+  if [ "$(id -u)" -eq 0 ]; then
+    cp "${TMP_DIR}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
+    chmod +x "${INSTALL_DIR}/${BINARY}"
+  else
+    sudo cp "${TMP_DIR}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
+    sudo chmod +x "${INSTALL_DIR}/${BINARY}"
+  fi
+fi
 
 # Check if INSTALL_DIR is in PATH
 case ":${PATH}:" in
