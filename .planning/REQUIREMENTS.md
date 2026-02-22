@@ -17,14 +17,14 @@ Requirements for v1.1 Security Hardening & Code Review Fixes. Each maps to roadm
 
 - [ ] **FUNC-01**: `--burn` and `--share` are mutually exclusive (CLI errors if both specified)
 - [ ] **FUNC-02**: Self-publish success message shows correct pickup command (not raw token)
-- [ ] **FUNC-03**: HomeserverClient reuses session cookies instead of signing in on every operation
+- [x] **FUNC-03**: HomeserverClient reuses session cookies instead of signing in on every operation
 
 ### Code Quality
 
 - [x] **QUAL-01**: `human_duration` extracted to shared utility (no duplication across commands)
 - [x] **QUAL-02**: Error handling uses structured `CclinkError` variants instead of string matching on "404"/"not found"
 - [x] **QUAL-03**: Dead `CclinkError` variants removed (InvalidKeyFormat, KeyCorrupted, RecordDeserializationFailed, HandoffExpired, NetworkRetryExhausted)
-- [ ] **QUAL-04**: List command fetches records efficiently (not N+1 individual HTTP requests)
+- [x] **QUAL-04**: List command fetches records efficiently (not N+1 individual HTTP requests)
 
 ### Documentation
 
@@ -58,11 +58,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SEC-03 | Phase 9 | Pending |
 | FUNC-01 | Phase 8 | Pending |
 | FUNC-02 | Phase 8 | Pending |
-| FUNC-03 | Phase 7 | Pending |
+| FUNC-03 | Phase 7 | Complete |
 | QUAL-01 | Phase 7 | Complete |
 | QUAL-02 | Phase 7 | Complete |
 | QUAL-03 | Phase 7 | Complete |
-| QUAL-04 | Phase 7 | Pending |
+| QUAL-04 | Phase 7 | Complete |
 | DOCS-01 | Phase 8 | Pending |
 
 **Coverage:**

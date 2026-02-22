@@ -95,6 +95,6 @@ Plans:
 | 4. Advanced Encryption and Management | v1.0 | 3/3 | Complete | 2026-02-22 |
 | 5. Release and Distribution | v1.0 | 2/2 | Complete | 2026-02-22 |
 | 6. Signed Record Format | 2/2 | Complete   | 2026-02-22 | - |
-| 7. Code Quality and Transport | 2/2 | Complete   | 2026-02-22 | - |
+| 7. Code Quality and Transport | 2/2 | Complete    | 2026-02-22 | - |
 | 8. CLI Fixes and Documentation | v1.1 | 0/? | Not started | - |
 | 9. PIN-Protected Handoffs | v1.1 | 0/? | Not started | - |
