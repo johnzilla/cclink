@@ -80,9 +80,14 @@ pub fn run_publish(cli: &crate::cli::Cli) -> anyhow::Result<()> {
     );
 
     // ── 4. Encrypt session ID with age ────────────────────────────────────
-    // Encryption (publish) uses only the public key recipient; decryption uses the secret (pickup).
-    let x25519_pubkey = crate::crypto::ed25519_to_x25519_public(&keypair);
-    let recipient = crate::crypto::age_recipient(&x25519_pubkey);
+    // --share: encrypt to the specified recipient's X25519 key (ENC-01)
+    // Otherwise: self-encrypt to own X25519 key (existing behavior)
+    let recipient = if let Some(ref share_pubkey) = cli.share {
+        crate::crypto::recipient_from_z32(share_pubkey)?
+    } else {
+        let x25519_pubkey = crate::crypto::ed25519_to_x25519_public(&keypair);
+        crate::crypto::age_recipient(&x25519_pubkey)
+    };
     let ciphertext = crate::crypto::age_encrypt(session.session_id.as_bytes(), &recipient)?;
     let blob = base64::engine::general_purpose::STANDARD.encode(&ciphertext);
 
@@ -103,12 +108,12 @@ pub fn run_publish(cli: &crate::cli::Cli) -> anyhow::Result<()> {
     let signature = crate::record::sign_record(&signable, &keypair)?;
     let record = crate::record::HandoffRecord {
         blob: signable.blob,
-        burn: false,
+        burn: cli.burn,
         created_at: signable.created_at,
         hostname: signable.hostname,
         project: signable.project,
         pubkey: signable.pubkey,
-        recipient: None,
+        recipient: cli.share.clone(),
         signature,
         ttl: signable.ttl,
     };
@@ -118,15 +123,33 @@ pub fn run_publish(cli: &crate::cli::Cli) -> anyhow::Result<()> {
     let token = client.publish(&keypair, &record)?;
 
     // ── 7. Output success ─────────────────────────────────────────────────
+    if cli.burn {
+        println!(
+            "{}",
+            "Warning: This handoff will be deleted after the first successful pickup."
+                .if_supports_color(Stdout, |t| t.yellow())
+        );
+    }
     println!(
         "\n{}",
         "Published!".if_supports_color(Stdout, |t| t.green())
     );
-    println!("  Run on another machine:");
-    println!(
-        "  {}",
-        format!("cclink pickup {}", token).if_supports_color(Stdout, |t| t.bold())
-    );
+    if cli.share.is_some() {
+        // Shared: recipient needs to specify the publisher's pubkey to pick up
+        let own_pubkey = keypair.public_key().to_z32();
+        println!("  Recipient pickup command:");
+        println!(
+            "  {}",
+            format!("cclink pickup {}", own_pubkey).if_supports_color(Stdout, |t| t.bold())
+        );
+    } else {
+        // Self: existing pickup command using token
+        println!("  Run on another machine:");
+        println!(
+            "  {}",
+            format!("cclink pickup {}", token).if_supports_color(Stdout, |t| t.bold())
+        );
+    }
     let hours = cli.ttl / 3600;
     println!("  Expires in {}h", hours);
 
