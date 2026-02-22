@@ -22,4 +22,13 @@ pub enum CclinkError {
 
     #[error("Record deserialization failed: {0}")]
     RecordDeserializationFailed(String),
+
+    #[error("No Claude Code session found. Start a session with 'claude' first.")]
+    SessionNotFound,
+
+    #[error("This handoff expired {0} ago. Publish a new one with cclink.")]
+    HandoffExpired(String),
+
+    #[error("Network request failed after retries: {0}")]
+    NetworkRetryExhausted(String),
 }
