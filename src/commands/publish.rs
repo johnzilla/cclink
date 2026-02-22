@@ -29,8 +29,10 @@ pub fn run_publish(cli: &crate::cli::Cli) -> anyhow::Result<()> {
             mtime: SystemTime::now(),
         }
     } else {
-        // Auto-discover sessions from ~/.claude/projects/
-        let mut sessions = crate::session::discover_sessions()?;
+        // Auto-discover sessions from ~/.claude/projects/, scoped to the
+        // current working directory so unrelated project sessions are excluded.
+        let cwd = std::env::current_dir().ok();
+        let mut sessions = crate::session::discover_sessions(cwd.as_deref())?;
         match sessions.len() {
             0 => {
                 // No active session found

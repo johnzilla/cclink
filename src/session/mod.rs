@@ -13,7 +13,11 @@ pub struct SessionInfo {
 /// Returns sessions modified within the last 24 hours, sorted by mtime
 /// descending (most recent first). Returns an empty Vec if the directory
 /// does not exist.
-pub fn discover_sessions() -> anyhow::Result<Vec<SessionInfo>> {
+///
+/// If `cwd_filter` is `Some(path)`, only sessions whose project cwd starts
+/// with (or equals) the canonical form of that path are returned. Sessions
+/// whose project path cannot be canonicalized (stale paths) are skipped.
+pub fn discover_sessions(cwd_filter: Option<&std::path::Path>) -> anyhow::Result<Vec<SessionInfo>> {
     let home = dirs::home_dir()
         .ok_or_else(|| anyhow::anyhow!("Cannot find home directory"))?;
     let projects_dir = home.join(".claude/projects");
@@ -25,6 +29,11 @@ pub fn discover_sessions() -> anyhow::Result<Vec<SessionInfo>> {
     let cutoff = SystemTime::now()
         .checked_sub(Duration::from_secs(86400)) // 24-hour window for "active"
         .unwrap_or(SystemTime::UNIX_EPOCH);
+
+    // Canonicalize the filter path once before the loop
+    let canonical_filter = cwd_filter.map(|p| {
+        std::fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf())
+    });
 
     let mut sessions: Vec<SessionInfo> = Vec::new();
 
@@ -63,6 +72,15 @@ pub fn discover_sessions() -> anyhow::Result<Vec<SessionInfo>> {
 
             // Read cwd from JSONL progress record
             if let Ok(project) = read_session_cwd(&path) {
+                // Filter by cwd if provided
+                if let Some(ref filter) = canonical_filter {
+                    let canonical_project = std::fs::canonicalize(&project)
+                        .unwrap_or_else(|_| std::path::PathBuf::from(&project));
+                    if !canonical_project.starts_with(filter) {
+                        continue;
+                    }
+                }
+
                 sessions.push(SessionInfo {
                     session_id,
                     project,
@@ -116,7 +134,28 @@ mod tests {
         //
         // We can only safely test this if projects/ is absent on this machine.
         // If it IS present, the function should still return Ok.
-        let result = discover_sessions();
+        let result = discover_sessions(None);
         assert!(result.is_ok(), "discover_sessions must return Ok: {:?}", result);
+    }
+
+    #[test]
+    fn discover_sessions_filters_by_cwd() {
+        // Smoke test: passing a nonexistent path as the cwd filter must return
+        // Ok with an empty Vec, since no real session can have a project path
+        // that starts with a path that matches nothing on this machine.
+        let result = discover_sessions(Some(std::path::Path::new(
+            "/nonexistent/path/that/matches/nothing",
+        )));
+        assert!(
+            result.is_ok(),
+            "discover_sessions with cwd_filter must return Ok: {:?}",
+            result
+        );
+        let sessions = result.unwrap();
+        assert!(
+            sessions.is_empty(),
+            "expected empty Vec when filter matches nothing, got: {:?}",
+            sessions
+        );
     }
 }
