@@ -16,7 +16,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Session Discovery
 
-- [ ] **SESS-01**: CLI can discover the most recent session ID from `~/.claude/sessions/`
+- [x] **SESS-01**: CLI can discover the most recent session ID from `~/.claude/sessions/`
 - [ ] **SESS-02**: User can provide an explicit session ID as a CLI argument
 
 ### Publishing
@@ -50,7 +50,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Terminal UX
 
-- [ ] **UX-01**: Colored terminal output with clear success/error states
+- [x] **UX-01**: Colored terminal output with clear success/error states
 - [x] **UX-02**: Ed25519 signature verification on all retrieved records
 
 ## v2 Requirements
@@ -96,7 +96,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | KEY-02 | Phase 1 | Complete |
 | KEY-03 | Phase 1 | Complete |
 | KEY-04 | Phase 1 | Complete |
-| SESS-01 | Phase 3 | Pending |
+| SESS-01 | Phase 3 | Complete |
 | SESS-02 | Phase 3 | Pending |
 | PUB-01 | Phase 3 | Pending |
 | PUB-02 | Phase 2 | Complete |
@@ -115,7 +115,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MGT-01 | Phase 4 | Pending |
 | MGT-02 | Phase 4 | Pending |
 | MGT-03 | Phase 4 | Pending |
-| UX-01 | Phase 3 | Pending |
+| UX-01 | Phase 3 | Complete |
 | UX-02 | Phase 2 | Complete |
 
 **Coverage:**

@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-21)
 
 **Core value:** Effortless, secure session handoff between devices: `cclink` on one machine, `cclink pickup` on another, you're back in your session.
-**Current focus:** Phase 2 (Crypto and Transport) — COMPLETE (all 3 plans done)
+**Current focus:** Phase 3 (Core Commands) — IN PROGRESS (1 of 3 plans done)
 
 ## Current Position
 
-Phase: 2 of 5 (Crypto and Transport) — COMPLETE
-Plan: 3 of 3 in current phase — COMPLETE
-Status: Ready for Phase 3
-Last activity: 2026-02-22 — Plan 02-03 complete (transport module: AuthToken + HomeserverClient, all 21 tests pass)
+Phase: 3 of 5 (Core Commands) — IN PROGRESS
+Plan: 1 of 3 in current phase — COMPLETE
+Status: Ready for Plan 03-02 (publish command)
+Last activity: 2026-02-22 — Plan 03-01 complete (Phase 3 deps + session discovery: SessionInfo, discover_sessions(), 22 tests pass)
 
-Progress: [██████░░░░] 56%
+Progress: [███████░░░] 62%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
-- Average duration: 2.25 min
-- Total execution time: 10 min
+- Total plans completed: 5
+- Average duration: 2.2 min
+- Total execution time: 12 min
 
 **By Phase:**
 
@@ -29,9 +29,10 @@ Progress: [██████░░░░] 56%
 |-------|-------|-------|----------|
 | 01-foundation-and-key-management | 2 | 5 min | 2.5 min |
 | 02-crypto-and-transport | 3 | 9 min | 3 min |
+| 03-core-commands | 1 | 2 min | 2 min |
 
 **Recent Trend:**
-- Last 5 plans: 2.6 min
+- Last 5 plans: 2.4 min
 - Trend: stable
 
 *Updated after each plan completion*
@@ -61,6 +62,10 @@ Recent decisions affecting current work:
 - [Phase 02-crypto-and-transport]: serde 1.0.228 does not implement Serialize for [u8; 64] — AuthToken bytes built manually instead of via postcard::to_allocvec on a derived struct
 - [Phase 02-crypto-and-transport]: AuthToken signable region confirmed as bytes[65..] from pubky-common 0.5.4 source: Signature serializes as varint(64)+[64 bytes]=65 bytes total
 - [Phase 02-crypto-and-transport]: publish() calls signin() on every invocation — stateless, no persistent session across calls
+- [Phase 03-core-commands]: Session file UUID stem IS the session_id — no decoding of encoded directory names needed (03-01)
+- [Phase 03-core-commands]: cwd must be read from JSONL progress record; directory names use lossy encoding (03-01)
+- [Phase 03-core-commands]: 24-hour mtime cutoff defines active sessions — consistent with TTL default 86400s (03-01)
+- [Phase 03-core-commands]: SessionInfo derives Debug — required for test assertions with {:?} format (03-01)
 
 ### Pending Todos
 
@@ -74,5 +79,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 02-03-PLAN.md (transport module: AuthToken binary encoding + HomeserverClient, all 21 tests pass — Phase 2 COMPLETE)
+Stopped at: Completed 03-01-PLAN.md (Phase 3 deps + session discovery: owo-colors, dialoguer, qr2term, backoff, SessionInfo, discover_sessions(), 22 tests pass)
 Resume file: None
