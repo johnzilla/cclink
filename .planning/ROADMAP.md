@@ -59,9 +59,9 @@ Plans:
   3. Pickup refuses a record whose TTL has expired
   4. User runs `cclink pickup --exec` and `claude --resume <id>` executes automatically
   5. Colored terminal output clearly distinguishes success states from error states
-**Plans:** 4 plans (3 complete, 1 gap closure)
+**Plans:** 4/4 plans complete
 Plans:
-- [ ] 03-01-PLAN.md — Add Phase 3 dependencies, session discovery module, and new error variants
+- [x] 03-01-PLAN.md — Add Phase 3 dependencies, session discovery module, and new error variants (completed 2026-02-22)
 - [ ] 03-02-PLAN.md — Restructure CLI for default publish and implement the publish command end-to-end
 - [ ] 03-03-PLAN.md — Implement the pickup command with retrieval, TTL check, retry/backoff, and exec
 - [ ] 03-04-PLAN.md — Gap closure: Claude Code help text and cwd-filtered session discovery
@@ -96,6 +96,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Foundation and Key Management | 1/2 | Complete    | 2026-02-22 |
 | 2. Crypto and Transport | 3/3 | Complete   | 2026-02-22 |
-| 3. Core Commands | 3/4 | Gap closure | 2026-02-22 |
+| 3. Core Commands | 4/4 | Complete   | 2026-02-22 |
 | 4. Advanced Encryption and Management | 0/TBD | Not started | - |
 | 5. Release and Distribution | 0/TBD | Not started | - |

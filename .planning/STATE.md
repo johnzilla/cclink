@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-21)
 
 **Core value:** Effortless, secure session handoff between devices: `cclink` on one machine, `cclink pickup` on another, you're back in your session.
-**Current focus:** Phase 3 (Core Commands) — COMPLETE (3 of 3 plans done)
+**Current focus:** Phase 3 (Core Commands) — COMPLETE (4 of 4 plans done)
 
 ## Current Position
 
 Phase: 3 of 5 (Core Commands) — COMPLETE
-Plan: 3 of 3 in current phase — COMPLETE
+Plan: 4 of 4 in current phase — COMPLETE
 Status: Ready for Phase 4 (Advanced Encryption)
-Last activity: 2026-02-22 — Plan 03-03 complete (pickup command: retrieval, TTL, age decrypt, confirm, exec, 26 tests pass)
+Last activity: 2026-02-22 — Plan 03-04 complete (UAT gap closure: Claude Code help strings, cwd-scoped session discovery, 27 tests pass)
 
 Progress: [█████████░] 80%
 
@@ -36,6 +36,7 @@ Progress: [█████████░] 80%
 - Trend: stable
 
 *Updated after each plan completion*
+| Phase 03-core-commands P04 | 2 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,8 @@ Recent decisions affecting current work:
 - [Phase 03-core-commands]: Self-pickup signs in via session cookie; cross-user uses public multi-tenant path without sign-in (03-03)
 - [Phase 03-core-commands]: Retry wraps full get_latest+get_record sequence; 404/not-found are permanent errors; network failures are transient (03-03)
 - [Phase 03-core-commands]: launch_claude_resume() uses Unix exec() to replace cclink process; non-Unix falls back to status() wait (03-03)
+- [Phase 03-core-commands]: [Phase 03-core-commands]: discover_sessions() filter uses starts_with on canonicalized paths — handles symlinks and relative paths correctly
+- [Phase 03-core-commands]: [Phase 03-core-commands]: cwd scoping — pass Option<&Path> to discover_sessions, filter inside discovery function, not in callers
 
 ### Pending Todos
 
@@ -84,5 +87,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 03-03-PLAN.md (pickup command: retrieval, TTL, age decrypt, confirm, exec, 26 tests pass — Phase 3 complete)
+Stopped at: Completed 03-04-PLAN.md (UAT gap closure: Claude Code help strings, cwd-scoped session discovery, 27 tests pass)
 Resume file: None
