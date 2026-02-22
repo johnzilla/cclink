@@ -59,7 +59,10 @@ Plans:
   3. `cclink list` with N records makes one batch HTTP request, not N individual fetches
   4. HomeserverClient signs in once per process and reuses the session cookie for subsequent operations
   5. `human_duration` exists in exactly one place in the codebase (utility module shared by all commands)
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 07-01-PLAN.md — Error cleanup, shared utilities, structured 404 handling (QUAL-01, QUAL-02, QUAL-03)
+- [ ] 07-02-PLAN.md — Lazy signin and list optimization (QUAL-04, FUNC-03)
 
 ### Phase 8: CLI Fixes and Documentation
 **Goal**: The CLI surface is correct and honest — flag combinations that cannot work are rejected at parse time, help text shows valid commands, and the PRD reflects actual filesystem paths
@@ -92,6 +95,6 @@ Plans:
 | 4. Advanced Encryption and Management | v1.0 | 3/3 | Complete | 2026-02-22 |
 | 5. Release and Distribution | v1.0 | 2/2 | Complete | 2026-02-22 |
 | 6. Signed Record Format | 2/2 | Complete   | 2026-02-22 | - |
-| 7. Code Quality and Transport | v1.1 | 0/? | Not started | - |
+| 7. Code Quality and Transport | v1.1 | 0/2 | Not started | - |
 | 8. CLI Fixes and Documentation | v1.1 | 0/? | Not started | - |
 | 9. PIN-Protected Handoffs | v1.1 | 0/? | Not started | - |
