@@ -30,7 +30,7 @@ Full details: `milestones/v1.0-ROADMAP.md`
 
 - [x] **Phase 6: Signed Record Format** — Sign burn and recipient fields; enforce key file permissions (completed 2026-02-22)
 - [x] **Phase 7: Code Quality and Transport** — Structured errors, dead variant removal, lazy signin, list optimization, human_duration dedup (completed 2026-02-22)
-- [ ] **Phase 8: CLI Fixes and Documentation** — Mutual exclusion for --burn/--share, correct pickup help text, PRD path cleanup
+- [x] **Phase 8: CLI Fixes and Documentation** — Mutual exclusion for --burn/--share, correct pickup help text, PRD path cleanup (completed 2026-02-22)
 - [ ] **Phase 9: PIN-Protected Handoffs** — New --pin flag with Argon2id+HKDF-derived encryption
 
 ## Phase Details
@@ -74,7 +74,7 @@ Plans:
   3. The PRD contains no references to `~/.cclink/` paths — all key storage references say `~/.pubky/`
 **Plans:** 1 plan
 Plans:
-- [ ] 08-01-PLAN.md — CLI flag mutual exclusion, self-publish help text fix, PRD path cleanup (FUNC-01, FUNC-02, DOCS-01)
+- [x] 08-01-PLAN.md — CLI flag mutual exclusion, self-publish help text fix, PRD path cleanup (FUNC-01, FUNC-02, DOCS-01)
 
 ### Phase 9: PIN-Protected Handoffs
 **Goal**: Users can protect a handoff with a PIN so only the recipient who knows the PIN can decrypt the session ID
@@ -98,5 +98,5 @@ Plans:
 | 5. Release and Distribution | v1.0 | 2/2 | Complete | 2026-02-22 |
 | 6. Signed Record Format | 2/2 | Complete   | 2026-02-22 | - |
 | 7. Code Quality and Transport | 2/2 | Complete    | 2026-02-22 | - |
-| 8. CLI Fixes and Documentation | v1.1 | 0/1 | Not started | - |
+| 8. CLI Fixes and Documentation | v1.1 | 1/1 | Complete | 2026-02-22 |
 | 9. PIN-Protected Handoffs | v1.1 | 0/? | Not started | - |

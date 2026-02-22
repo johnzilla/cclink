@@ -15,8 +15,8 @@ Requirements for v1.1 Security Hardening & Code Review Fixes. Each maps to roadm
 
 ### Functional
 
-- [ ] **FUNC-01**: `--burn` and `--share` are mutually exclusive (CLI errors if both specified)
-- [ ] **FUNC-02**: Self-publish success message shows correct pickup command (not raw token)
+- [x] **FUNC-01**: `--burn` and `--share` are mutually exclusive (CLI errors if both specified)
+- [x] **FUNC-02**: Self-publish success message shows correct pickup command (not raw token)
 - [x] **FUNC-03**: HomeserverClient reuses session cookies instead of signing in on every operation
 
 ### Code Quality
@@ -28,7 +28,7 @@ Requirements for v1.1 Security Hardening & Code Review Fixes. Each maps to roadm
 
 ### Documentation
 
-- [ ] **DOCS-01**: PRD updated to reflect `~/.pubky/` paths instead of stale `~/.cclink/keys` references
+- [x] **DOCS-01**: PRD updated to reflect `~/.pubky/` paths instead of stale `~/.cclink/keys` references
 
 ## Future Requirements
 
@@ -56,14 +56,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SEC-01 | Phase 6 | Complete |
 | SEC-02 | Phase 6 | Complete |
 | SEC-03 | Phase 9 | Pending |
-| FUNC-01 | Phase 8 | Pending |
-| FUNC-02 | Phase 8 | Pending |
+| FUNC-01 | Phase 8 | Complete |
+| FUNC-02 | Phase 8 | Complete |
 | FUNC-03 | Phase 7 | Complete |
 | QUAL-01 | Phase 7 | Complete |
 | QUAL-02 | Phase 7 | Complete |
 | QUAL-03 | Phase 7 | Complete |
 | QUAL-04 | Phase 7 | Complete |
-| DOCS-01 | Phase 8 | Pending |
+| DOCS-01 | Phase 8 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 11 total

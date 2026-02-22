@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-22)
 
 **Core value:** Effortless, secure session handoff between devices: `cclink` on one machine, `cclink pickup` on another, you're back in your session.
-**Current focus:** Phase 7 — Code Quality and Transport
+**Current focus:** Phase 8 — CLI Fixes and Documentation
 
 ## Current Position
 
-Phase: 7 of 9 (Code Quality and Transport)
-Plan: 2 of 2 complete
-Status: Phase 7 complete
-Last activity: 2026-02-22 — 07-02 complete (lazy signin, get_all_records, list optimization)
+Phase: 8 of 9 (CLI Fixes and Documentation)
+Plan: 1 of 1 complete
+Status: Phase 8 complete
+Last activity: 2026-02-22 — 08-01 complete (--burn/--share conflict, self-publish message, PRD path fixes)
 
-Progress: [█████░░░░░] ~44% (v1.0 complete, phases 6-7 complete)
+Progress: [██████░░░░] ~55% (v1.0 complete, phases 6-8 complete)
 
 ## Performance Metrics
 
@@ -40,6 +40,7 @@ Progress: [█████░░░░░] ~44% (v1.0 complete, phases 6-7 compl
 |-------|-------|--------|
 | 6. Signed Record Format | 2 | Complete |
 | 7. Code Quality and Transport | 2/2 | Complete |
+| 8. CLI Fixes and Documentation | 1/1 | Complete |
 
 ## Accumulated Context
 
@@ -68,6 +69,11 @@ v1.1 phase 7 decisions:
 - get_all_records() is architectural encapsulation — N individual HTTP fetches are transport implementation detail, not visible to callers
 - list.rs retains explicit client.signin() call for clarity; signed_in flag prevents actual double-signin
 
+v1.1 phase 8 decisions:
+- --burn/--share mutual exclusion implemented via clap conflicts_with, not runtime validation — parse-time rejection is more correct
+- Self-publish message shows "cclink pickup" with no token; QR section retains token for concrete identifier
+- PRD updated only for ~/.cclink -> ~/.pubky/secret_key; other stale references left intentionally (historical planning doc)
+
 ### Pending Todos
 
 None.
@@ -81,5 +87,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 07-02-PLAN.md (lazy signin Cell<bool>, get_all_records, list command optimization)
+Stopped at: Completed 08-01-PLAN.md (--burn/--share conflict, self-publish message, PRD path fixes)
 Resume file: None
