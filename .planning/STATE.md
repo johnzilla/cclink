@@ -5,33 +5,33 @@
 See: .planning/PROJECT.md (updated 2026-02-21)
 
 **Core value:** Effortless, secure session handoff between devices: `cclink` on one machine, `cclink pickup` on another, you're back in your session.
-**Current focus:** Phase 2 (Crypto and Transport) — Plan 1 of 3 complete
+**Current focus:** Phase 2 (Crypto and Transport) — Plan 2 of 3 complete
 
 ## Current Position
 
 Phase: 2 of 5 (Crypto and Transport) — In Progress
-Plan: 1 of 3 in current phase — COMPLETE
-Status: Ready for Plan 02-02
-Last activity: 2026-02-22 — Plan 02-01 complete (crypto module: Ed25519-to-X25519 key derivation and age encrypt/decrypt)
+Plan: 2 of 3 in current phase — COMPLETE
+Status: Ready for Plan 02-03
+Last activity: 2026-02-22 — Plan 02-02 complete (HandoffRecord with canonical JSON and Ed25519 signing/verification, all 7 tests pass)
 
-Progress: [████░░░░░░] 33%
+Progress: [█████░░░░░] 44%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: 2.33 min
-- Total execution time: 8 min
+- Total plans completed: 4
+- Average duration: 2.25 min
+- Total execution time: 10 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation-and-key-management | 2 | 5 min | 2.5 min |
-| 02-crypto-and-transport | 1 | 3 min | 3 min |
+| 02-crypto-and-transport | 2 | 5 min | 2.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 2.33 min
+- Last 5 plans: 2.25 min
 - Trend: stable
 
 *Updated after each plan completion*
@@ -54,6 +54,10 @@ Recent decisions affecting current work:
 - ed25519-dalek must be listed explicitly in Cargo.toml even though it is a pkarr transitive dep — Rust requires direct Cargo.toml declaration for direct crate imports (02-01)
 - reqwest 0.13 feature name is 'rustls' not 'rustls-tls' (renamed in the 0.13 release) (02-01)
 - curve25519-dalek 4 (age) and 5-pre.6 (pkarr) coexist safely — convert at [u8; 32] boundary only; never pass types between them (02-01)
+- serde_json serializes struct fields in declaration order — alphabetical field ordering ensures canonical JSON without preserve_order feature (02-02)
+- HandoffRecordSignable is a separate struct (not a field-masked view) — avoids circular signing dependency (02-02)
+- Hard fail on signature verification failure — no bypass flag, no graceful degradation (02-02)
+- base64::Engine trait must be in scope explicitly (use base64::Engine) for GeneralPurpose encode/decode methods (02-02)
 
 ### Pending Todos
 
@@ -67,5 +71,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 02-01-PLAN.md (crypto module: Ed25519-to-X25519 key derivation and age encrypt/decrypt, all 5 tests pass)
+Stopped at: Completed 02-02-PLAN.md (HandoffRecord with canonical JSON and Ed25519 sign/verify, all 7 tests pass)
 Resume file: None

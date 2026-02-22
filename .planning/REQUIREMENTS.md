@@ -22,7 +22,7 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Publishing
 
 - [ ] **PUB-01**: User can publish an encrypted handoff record to their Pubky homeserver via `cclink` or `cclink <session-id>`
-- [ ] **PUB-02**: Handoff record includes hostname, project path, creation timestamp, and TTL
+- [x] **PUB-02**: Handoff record includes hostname, project path, creation timestamp, and TTL
 - [x] **PUB-03**: Session ID is age-encrypted to the creator's own X25519 key (derived from Ed25519)
 - [ ] **PUB-04**: User can set a custom TTL via `--ttl` (default 8 hours)
 - [ ] **PUB-05**: A `latest.json` pointer is updated on each publish
@@ -51,7 +51,7 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Terminal UX
 
 - [ ] **UX-01**: Colored terminal output with clear success/error states
-- [ ] **UX-02**: Ed25519 signature verification on all retrieved records
+- [x] **UX-02**: Ed25519 signature verification on all retrieved records
 
 ## v2 Requirements
 
@@ -99,7 +99,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SESS-01 | Phase 3 | Pending |
 | SESS-02 | Phase 3 | Pending |
 | PUB-01 | Phase 3 | Pending |
-| PUB-02 | Phase 2 | Pending |
+| PUB-02 | Phase 2 | Complete |
 | PUB-03 | Phase 2 | Complete |
 | PUB-04 | Phase 3 | Pending |
 | PUB-05 | Phase 2 | Pending |
@@ -116,7 +116,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MGT-02 | Phase 4 | Pending |
 | MGT-03 | Phase 4 | Pending |
 | UX-01 | Phase 3 | Pending |
-| UX-02 | Phase 2 | Pending |
+| UX-02 | Phase 2 | Complete |
 
 **Coverage:**
 - v1 requirements: 25 total
