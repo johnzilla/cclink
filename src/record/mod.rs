@@ -13,10 +13,17 @@ use serde::{Deserialize, Serialize};
 /// Fields are in alphabetical order. This is critical: serde serializes struct fields
 /// in declaration order, so alphabetical order ensures deterministic JSON output
 /// without enabling the `preserve_order` serde_json feature.
+///
+/// `burn` and `recipient` are unsigned metadata fields — they are NOT in
+/// HandoffRecordSignable. This preserves backwards compatibility with Phase 3 records
+/// that were signed without these fields.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct HandoffRecord {
     /// Base64-encoded age ciphertext containing the encrypted session payload.
     pub blob: String,
+    /// Burn-after-read flag: if true, the record should be deleted after first successful pickup.
+    #[serde(default)]
+    pub burn: bool,
     /// Unix timestamp (seconds) when the record was created.
     pub created_at: u64,
     /// Hostname of the machine that created this record.
@@ -25,6 +32,9 @@ pub struct HandoffRecord {
     pub project: String,
     /// Creator's z32-encoded Ed25519 public key.
     pub pubkey: String,
+    /// Optional z32-encoded public key of the intended recipient (None = self-encrypted).
+    #[serde(default)]
+    pub recipient: Option<String>,
     /// Base64-encoded Ed25519 signature over canonical JSON of the signable fields.
     pub signature: String,
     /// Record time-to-live in seconds.
@@ -35,6 +45,11 @@ pub struct HandoffRecord {
 ///
 /// Fields are in alphabetical order — matching HandoffRecord ordering — for deterministic
 /// canonical JSON serialization.
+///
+/// CRITICAL: `burn` and `recipient` are intentionally excluded. Phase 3 records were signed
+/// without these fields; including them in the signable struct would break verification of
+/// all existing Phase 3 records. For this single-user tool these fields are treated as
+/// unsigned metadata — the user controls their own homeserver records.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct HandoffRecordSignable {
     /// Base64-encoded age ciphertext.
@@ -69,6 +84,7 @@ pub struct LatestPointer {
 
 impl From<&HandoffRecord> for HandoffRecordSignable {
     /// Convert a HandoffRecord to its signable form by copying all fields except `signature`.
+    /// Note: `burn` and `recipient` are unsigned metadata and are not included.
     fn from(record: &HandoffRecord) -> Self {
         HandoffRecordSignable {
             blob: record.blob.clone(),
@@ -222,10 +238,12 @@ mod tests {
 
         let record = HandoffRecord {
             blob: signable.blob.clone(),
+            burn: false,
             created_at: signable.created_at,
             hostname: signable.hostname.clone(),
             project: signable.project.clone(),
             pubkey: signable.pubkey.clone(),
+            recipient: None,
             signature,
             ttl: signable.ttl,
         };
@@ -244,10 +262,12 @@ mod tests {
 
         let record = HandoffRecord {
             blob: signable.blob.clone(),
+            burn: false,
             created_at: signable.created_at,
             hostname: signable.hostname.clone(),
             project: signable.project.clone(),
             pubkey: signable.pubkey.clone(),
+            recipient: None,
             signature,
             ttl: signable.ttl,
         };
@@ -272,10 +292,12 @@ mod tests {
         // Tamper with the TTL field
         let tampered = HandoffRecord {
             blob: signable.blob.clone(),
+            burn: false,
             created_at: signable.created_at,
             hostname: signable.hostname.clone(),
             project: signable.project.clone(),
             pubkey: signable.pubkey.clone(),
+            recipient: None,
             signature,
             ttl: signable.ttl + 9999, // tampered!
         };
@@ -301,5 +323,37 @@ mod tests {
         assert_eq!(deserialized.hostname, pointer.hostname);
         assert_eq!(deserialized.project, pointer.project);
         assert_eq!(deserialized.token, pointer.token);
+    }
+
+    #[test]
+    fn test_phase3_record_backwards_compat() {
+        // Simulate a Phase 3 record JSON (without burn/recipient fields)
+        let keypair = fixed_keypair();
+        let signable = sample_signable();
+        let signature = sign_record(&signable, &keypair).expect("sign_record should succeed");
+
+        // Create JSON that looks like a Phase 3 record — no burn or recipient fields
+        let phase3_json = format!(
+            r#"{{"blob":"{}","created_at":{},"hostname":"{}","project":"{}","pubkey":"{}","signature":"{}","ttl":{}}}"#,
+            signable.blob,
+            signable.created_at,
+            signable.hostname,
+            signable.project,
+            signable.pubkey,
+            signature,
+            signable.ttl
+        );
+
+        // Deserialize the Phase 3 record
+        let record: HandoffRecord =
+            serde_json::from_str(&phase3_json).expect("Phase 3 record should deserialize");
+
+        // burn defaults to false, recipient defaults to None
+        assert_eq!(record.burn, false, "burn should default to false for Phase 3 records");
+        assert_eq!(record.recipient, None, "recipient should default to None for Phase 3 records");
+
+        // Verify the signature — should still pass since signable struct is unchanged
+        verify_record(&record, &keypair.public_key())
+            .expect("Phase 3 record signature verification should still pass");
     }
 }

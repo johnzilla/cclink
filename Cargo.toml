@@ -27,3 +27,4 @@ owo-colors = { version = "4", features = ["supports-colors"] }
 dialoguer = "0.12"
 qr2term = "0.3"
 backoff = "0.4"
+comfy-table = "7.2.2"

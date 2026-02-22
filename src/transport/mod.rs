@@ -472,10 +472,12 @@ mod tests {
         let signature = sign_record(&signable, &keypair).expect("sign_record failed");
         let record = HandoffRecord {
             blob: signable.blob,
+            burn: false,
             created_at: signable.created_at,
             hostname: signable.hostname,
             project: signable.project,
             pubkey: signable.pubkey,
+            recipient: None,
             signature,
             ttl: signable.ttl,
         };
@@ -506,10 +508,12 @@ mod tests {
         let signature = sign_record(&signable, &keypair).expect("sign_record failed");
         let record = HandoffRecord {
             blob: signable.blob,
+            burn: false,
             created_at: signable.created_at,
             hostname: signable.hostname,
             project: signable.project,
             pubkey: signable.pubkey,
+            recipient: None,
             signature,
             ttl: signable.ttl,
         };
@@ -549,10 +553,12 @@ mod tests {
         let signature = sign_record(&signable, &keypair_a).expect("sign_record failed");
         let record = HandoffRecord {
             blob: signable.blob,
+            burn: false,
             created_at: signable.created_at,
             hostname: signable.hostname,
             project: signable.project,
             pubkey: signable.pubkey,
+            recipient: None,
             signature,
             ttl: signable.ttl,
         };
@@ -593,10 +599,12 @@ mod tests {
         let signature = sign_record(&signable, &keypair).expect("sign_record failed");
         let record = HandoffRecord {
             blob: signable.blob,
+            burn: false,
             created_at: signable.created_at,
             hostname: signable.hostname,
             project: signable.project,
             pubkey: signable.pubkey,
+            recipient: None,
             signature,
             ttl: signable.ttl,
         };
