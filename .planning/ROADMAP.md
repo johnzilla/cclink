@@ -28,7 +28,7 @@ Full details: `milestones/v1.0-ROADMAP.md`
 
 **Milestone Goal:** Address all findings from external code review — fix security gaps, resolve functional discrepancies, and improve code quality. Every v1.1 requirement addressed before v1.1 ships.
 
-- [ ] **Phase 6: Signed Record Format** — Sign burn and recipient fields; enforce key file permissions
+- [x] **Phase 6: Signed Record Format** — Sign burn and recipient fields; enforce key file permissions (completed 2026-02-22)
 - [ ] **Phase 7: Code Quality and Transport** — Structured errors, dead variant removal, lazy signin, list optimization, human_duration dedup
 - [ ] **Phase 8: CLI Fixes and Documentation** — Mutual exclusion for --burn/--share, correct pickup help text, PRD path cleanup
 - [ ] **Phase 9: PIN-Protected Handoffs** — New --pin flag with Argon2id+HKDF-derived encryption
@@ -44,7 +44,7 @@ Full details: `milestones/v1.0-ROADMAP.md`
   2. Picking up a v1.1 record that was tampered to flip the burn flag fails signature verification and errors out
   3. On any cclink operation that loads the key, the code explicitly checks and enforces 0600 permissions rather than relying on pkarr
   4. Existing v1.0 records (unsigned burn/recipient) expire via TTL without any migration step required
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [ ] 06-01-PLAN.md — Sign burn and recipient into HandoffRecordSignable (TDD)
 - [ ] 06-02-PLAN.md — Enforce 0600 key file permissions on load and write (TDD)
@@ -91,7 +91,7 @@ Plans:
 | 3. Core Commands | v1.0 | 4/4 | Complete | 2026-02-22 |
 | 4. Advanced Encryption and Management | v1.0 | 3/3 | Complete | 2026-02-22 |
 | 5. Release and Distribution | v1.0 | 2/2 | Complete | 2026-02-22 |
-| 6. Signed Record Format | 1/2 | In Progress|  | - |
+| 6. Signed Record Format | 2/2 | Complete   | 2026-02-22 | - |
 | 7. Code Quality and Transport | v1.1 | 0/? | Not started | - |
 | 8. CLI Fixes and Documentation | v1.1 | 0/? | Not started | - |
 | 9. PIN-Protected Handoffs | v1.1 | 0/? | Not started | - |
