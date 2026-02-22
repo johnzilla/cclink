@@ -73,3 +73,85 @@ pub fn keypair_exists() -> anyhow::Result<bool> {
     let path = secret_key_path()?;
     Ok(path.exists())
 }
+
+/// Check that a key file has owner-only (0600) permissions.
+///
+/// Returns an error describing the permissions issue if the file mode is not 0600.
+/// Only compiled on Unix platforms.
+#[cfg(unix)]
+pub fn check_key_permissions(path: &Path) -> anyhow::Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    let metadata = std::fs::metadata(path)
+        .with_context(|| format!("Failed to read metadata for {}", path.display()))?;
+    let mode = metadata.permissions().mode() & 0o777;
+    if mode != 0o600 {
+        return Err(anyhow::anyhow!(
+            "Key file {} has insecure permissions {:04o}; expected 0600. Run: chmod 600 {}",
+            path.display(),
+            mode,
+            path.display()
+        ));
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn test_enforce_permissions_rejects_0644() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().expect("Failed to create temp dir");
+        let path = dir.path().join("secret_key");
+        let keypair = pkarr::Keypair::random();
+        keypair
+            .write_secret_key_file(&path)
+            .expect("Failed to write keypair");
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644))
+            .expect("Failed to set permissions");
+        let result = check_key_permissions(&path);
+        assert!(result.is_err(), "Expected error for 0644 permissions");
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("permissions"),
+            "Error message should contain 'permissions', got: {}",
+            err_msg
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_enforce_permissions_accepts_0600() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().expect("Failed to create temp dir");
+        let path = dir.path().join("secret_key");
+        let keypair = pkarr::Keypair::random();
+        keypair
+            .write_secret_key_file(&path)
+            .expect("Failed to write keypair");
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))
+            .expect("Failed to set permissions");
+        let result = check_key_permissions(&path);
+        assert!(result.is_ok(), "Expected Ok for 0600 permissions, got: {:?}", result);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_write_keypair_atomic_sets_0600() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().expect("Failed to create temp dir");
+        let path = dir.path().join("secret_key");
+        let keypair = pkarr::Keypair::random();
+        write_keypair_atomic(&keypair, &path).expect("Failed to write keypair atomically");
+        let metadata = std::fs::metadata(&path).expect("Failed to read metadata");
+        let mode = metadata.permissions().mode() & 0o777;
+        assert_eq!(
+            mode,
+            0o600,
+            "Expected 0600 permissions after atomic write, got {:04o}",
+            mode
+        );
+    }
+}

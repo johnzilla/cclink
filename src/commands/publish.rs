@@ -99,10 +99,12 @@ pub fn run_publish(cli: &crate::cli::Cli) -> anyhow::Result<()> {
 
     let signable = crate::record::HandoffRecordSignable {
         blob,
+        burn: cli.burn,
         created_at,
         hostname,
         project: session.project.clone(),
         pubkey: keypair.public_key().to_z32(),
+        recipient: cli.share.clone(),
         ttl: cli.ttl,
     };
     let signature = crate::record::sign_record(&signable, &keypair)?;

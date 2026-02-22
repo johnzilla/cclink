@@ -14,14 +14,16 @@ use serde::{Deserialize, Serialize};
 /// in declaration order, so alphabetical order ensures deterministic JSON output
 /// without enabling the `preserve_order` serde_json feature.
 ///
-/// `burn` and `recipient` are unsigned metadata fields — they are NOT in
-/// HandoffRecordSignable. This preserves backwards compatibility with Phase 3 records
-/// that were signed without these fields.
+/// As of v1.1, `burn` and `recipient` are included in the signed envelope
+/// (HandoffRecordSignable), so tampering with either field causes signature
+/// verification failure. v1.0 records (signed without these fields) are not
+/// supported — they expire via TTL (clean break).
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct HandoffRecord {
     /// Base64-encoded age ciphertext containing the encrypted session payload.
     pub blob: String,
     /// Burn-after-read flag: if true, the record should be deleted after first successful pickup.
+    /// Signed as part of the v1.1 envelope — tampering causes verification failure.
     #[serde(default)]
     pub burn: bool,
     /// Unix timestamp (seconds) when the record was created.
@@ -33,6 +35,7 @@ pub struct HandoffRecord {
     /// Creator's z32-encoded Ed25519 public key.
     pub pubkey: String,
     /// Optional z32-encoded public key of the intended recipient (None = self-encrypted).
+    /// Signed as part of the v1.1 envelope — tampering causes verification failure.
     #[serde(default)]
     pub recipient: Option<String>,
     /// Base64-encoded Ed25519 signature over canonical JSON of the signable fields.
@@ -46,14 +49,17 @@ pub struct HandoffRecord {
 /// Fields are in alphabetical order — matching HandoffRecord ordering — for deterministic
 /// canonical JSON serialization.
 ///
-/// CRITICAL: `burn` and `recipient` are intentionally excluded. Phase 3 records were signed
-/// without these fields; including them in the signable struct would break verification of
-/// all existing Phase 3 records. For this single-user tool these fields are treated as
-/// unsigned metadata — the user controls their own homeserver records.
+/// Field order (alphabetical): blob, burn, created_at, hostname, project, pubkey, recipient, ttl
+///
+/// v1.1 change: `burn` and `recipient` are now included in the signed envelope.
+/// This is a clean break from v1.0 — v1.0 records (signed without burn/recipient) are
+/// not supported; they expire via TTL. There is no version negotiation.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct HandoffRecordSignable {
     /// Base64-encoded age ciphertext.
     pub blob: String,
+    /// Burn-after-read flag: signed into the envelope so tampering is detectable.
+    pub burn: bool,
     /// Unix timestamp (seconds) when the record was created.
     pub created_at: u64,
     /// Hostname of the machine that created this record.
@@ -62,6 +68,8 @@ pub struct HandoffRecordSignable {
     pub project: String,
     /// Creator's z32-encoded Ed25519 public key.
     pub pubkey: String,
+    /// Optional z32-encoded public key of the intended recipient: signed into the envelope.
+    pub recipient: Option<String>,
     /// Record time-to-live in seconds.
     pub ttl: u64,
 }
@@ -84,14 +92,16 @@ pub struct LatestPointer {
 
 impl From<&HandoffRecord> for HandoffRecordSignable {
     /// Convert a HandoffRecord to its signable form by copying all fields except `signature`.
-    /// Note: `burn` and `recipient` are unsigned metadata and are not included.
+    /// `burn` and `recipient` are included — they are signed into the v1.1 envelope.
     fn from(record: &HandoffRecord) -> Self {
         HandoffRecordSignable {
             blob: record.blob.clone(),
+            burn: record.burn,
             created_at: record.created_at,
             hostname: record.hostname.clone(),
             project: record.project.clone(),
             pubkey: record.pubkey.clone(),
+            recipient: record.recipient.clone(),
             ttl: record.ttl,
         }
     }
@@ -158,31 +168,44 @@ mod tests {
     fn sample_signable() -> HandoffRecordSignable {
         HandoffRecordSignable {
             blob: "dGVzdGJsb2I=".to_string(),
+            burn: false,
             created_at: 1_700_000_000,
             hostname: "testhost".to_string(),
             project: "/home/user/project".to_string(),
             pubkey: "testpubkey".to_string(),
+            recipient: None,
             ttl: 3600,
         }
     }
 
     #[test]
     fn test_handoff_record_signable_serializes_alphabetical_keys() {
-        let signable = sample_signable();
+        // Use a signable with recipient set so its position is testable
+        let signable = HandoffRecordSignable {
+            blob: "dGVzdGJsb2I=".to_string(),
+            burn: false,
+            created_at: 1_700_000_000,
+            hostname: "testhost".to_string(),
+            project: "/home/user/project".to_string(),
+            pubkey: "testpubkey".to_string(),
+            recipient: Some("recipientkey".to_string()),
+            ttl: 3600,
+        };
         let json = canonical_json(&signable).expect("canonical_json should succeed");
 
         // Find positions of each key in the JSON string
+        // Expected order: blob, burn, created_at, hostname, project, pubkey, recipient, ttl
         let blob_pos = json.find("\"blob\"").expect("blob key missing");
+        let burn_pos = json.find("\"burn\"").expect("burn key missing");
         let created_at_pos = json.find("\"created_at\"").expect("created_at key missing");
         let hostname_pos = json.find("\"hostname\"").expect("hostname key missing");
         let project_pos = json.find("\"project\"").expect("project key missing");
         let pubkey_pos = json.find("\"pubkey\"").expect("pubkey key missing");
+        let recipient_pos = json.find("\"recipient\"").expect("recipient key missing");
         let ttl_pos = json.find("\"ttl\"").expect("ttl key missing");
 
-        assert!(
-            blob_pos < created_at_pos,
-            "blob must come before created_at"
-        );
+        assert!(blob_pos < burn_pos, "blob must come before burn");
+        assert!(burn_pos < created_at_pos, "burn must come before created_at");
         assert!(
             created_at_pos < hostname_pos,
             "created_at must come before hostname"
@@ -192,7 +215,8 @@ mod tests {
             "hostname must come before project"
         );
         assert!(project_pos < pubkey_pos, "project must come before pubkey");
-        assert!(pubkey_pos < ttl_pos, "pubkey must come before ttl");
+        assert!(pubkey_pos < recipient_pos, "pubkey must come before recipient");
+        assert!(recipient_pos < ttl_pos, "recipient must come before ttl");
     }
 
     #[test]
@@ -326,34 +350,78 @@ mod tests {
     }
 
     #[test]
-    fn test_phase3_record_backwards_compat() {
-        // Simulate a Phase 3 record JSON (without burn/recipient fields)
+    fn test_signable_includes_burn_field() {
+        let signable = HandoffRecordSignable {
+            blob: "dGVzdGJsb2I=".to_string(),
+            burn: true,
+            created_at: 1_700_000_000,
+            hostname: "testhost".to_string(),
+            project: "/home/user/project".to_string(),
+            pubkey: "testpubkey".to_string(),
+            recipient: None,
+            ttl: 3600,
+        };
+        let json = canonical_json(&signable).expect("canonical_json should succeed");
+        assert!(
+            json.contains("\"burn\":true"),
+            "canonical JSON must contain burn:true, got: {}",
+            json
+        );
+    }
+
+    #[test]
+    fn test_signable_includes_recipient_field() {
+        let signable = HandoffRecordSignable {
+            blob: "dGVzdGJsb2I=".to_string(),
+            burn: false,
+            created_at: 1_700_000_000,
+            hostname: "testhost".to_string(),
+            project: "/home/user/project".to_string(),
+            pubkey: "testpubkey".to_string(),
+            recipient: Some("abc123".to_string()),
+            ttl: 3600,
+        };
+        let json = canonical_json(&signable).expect("canonical_json should succeed");
+        assert!(
+            json.contains("\"recipient\":\"abc123\""),
+            "canonical JSON must contain recipient:\"abc123\", got: {}",
+            json
+        );
+    }
+
+    #[test]
+    fn test_tampered_burn_fails_verification() {
         let keypair = fixed_keypair();
-        let signable = sample_signable();
+        // Sign with burn: false
+        let signable = HandoffRecordSignable {
+            blob: "dGVzdGJsb2I=".to_string(),
+            burn: false,
+            created_at: 1_700_000_000,
+            hostname: "testhost".to_string(),
+            project: "/home/user/project".to_string(),
+            pubkey: "testpubkey".to_string(),
+            recipient: None,
+            ttl: 3600,
+        };
         let signature = sign_record(&signable, &keypair).expect("sign_record should succeed");
 
-        // Create JSON that looks like a Phase 3 record — no burn or recipient fields
-        let phase3_json = format!(
-            r#"{{"blob":"{}","created_at":{},"hostname":"{}","project":"{}","pubkey":"{}","signature":"{}","ttl":{}}}"#,
-            signable.blob,
-            signable.created_at,
-            signable.hostname,
-            signable.project,
-            signable.pubkey,
+        // Tamper: construct record with burn: true (different from what was signed)
+        let tampered = HandoffRecord {
+            blob: signable.blob.clone(),
+            burn: true, // tampered!
+            created_at: signable.created_at,
+            hostname: signable.hostname.clone(),
+            project: signable.project.clone(),
+            pubkey: signable.pubkey.clone(),
+            recipient: signable.recipient.clone(),
             signature,
-            signable.ttl
+            ttl: signable.ttl,
+        };
+
+        let result = verify_record(&tampered, &keypair.public_key());
+        assert!(
+            result.is_err(),
+            "verify_record must fail when burn field is tampered after signing"
         );
-
-        // Deserialize the Phase 3 record
-        let record: HandoffRecord =
-            serde_json::from_str(&phase3_json).expect("Phase 3 record should deserialize");
-
-        // burn defaults to false, recipient defaults to None
-        assert_eq!(record.burn, false, "burn should default to false for Phase 3 records");
-        assert_eq!(record.recipient, None, "recipient should default to None for Phase 3 records");
-
-        // Verify the signature — should still pass since signable struct is unchanged
-        verify_record(&record, &keypair.public_key())
-            .expect("Phase 3 record signature verification should still pass");
     }
 }

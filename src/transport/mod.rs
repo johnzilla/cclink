@@ -509,10 +509,12 @@ mod tests {
         // Build a complete signed record and verify token derivation
         let signable = HandoffRecordSignable {
             blob: "dGVzdA==".to_string(),
+            burn: false,
             created_at,
             hostname: "testhost".to_string(),
             project: "/test".to_string(),
             pubkey: keypair.public_key().to_z32(),
+            recipient: None,
             ttl: 3600,
         };
         let signature = sign_record(&signable, &keypair).expect("sign_record failed");
@@ -545,10 +547,12 @@ mod tests {
 
         let signable = HandoffRecordSignable {
             blob: "dGVzdA==".to_string(),
+            burn: false,
             created_at,
             hostname: "testhost".to_string(),
             project: "/test".to_string(),
             pubkey: keypair.public_key().to_z32(),
+            recipient: None,
             ttl: 3600,
         };
         let signature = sign_record(&signable, &keypair).expect("sign_record failed");
@@ -590,10 +594,12 @@ mod tests {
 
         let signable = HandoffRecordSignable {
             blob: "dGVzdA==".to_string(),
+            burn: false,
             created_at: 1_700_000_000,
             hostname: "testhost".to_string(),
             project: "/test".to_string(),
             pubkey: keypair_a.public_key().to_z32(),
+            recipient: None,
             ttl: 3600,
         };
         let signature = sign_record(&signable, &keypair_a).expect("sign_record failed");
@@ -633,6 +639,7 @@ mod tests {
         // Build a signed record
         let signable = HandoffRecordSignable {
             blob: "dGVzdA==".to_string(),
+            burn: false,
             created_at: SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
                 .unwrap()
@@ -640,6 +647,7 @@ mod tests {
             hostname: "integration-test".to_string(),
             project: "/test".to_string(),
             pubkey: keypair.public_key().to_z32(),
+            recipient: None,
             ttl: 3600,
         };
         let signature = sign_record(&signable, &keypair).expect("sign_record failed");
