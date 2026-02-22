@@ -5,7 +5,11 @@
 /// bytes to avoid type conflicts between curve25519-dalek 4 (age) and
 /// curve25519-dalek 5 (pkarr).
 
+use argon2::{Argon2, Algorithm, Version, Params};
 use bech32::{ToBase32, Variant};
+use hkdf::Hkdf;
+use rand::Rng;
+use sha2::Sha256;
 use std::io::Write;
 
 /// Derive the X25519 secret scalar from an Ed25519 keypair.
@@ -93,6 +97,80 @@ pub fn age_decrypt(ciphertext: &[u8], identity: &age::x25519::Identity) -> anyho
     let mut plaintext = vec![];
     std::io::Read::read_to_end(&mut reader, &mut plaintext)?;
     Ok(plaintext)
+}
+
+/// Derive a 32-byte key from a PIN and 32-byte salt using Argon2id + HKDF-SHA256.
+///
+/// Parameters: t_cost=3 (time), m_cost=65536 (64 MB memory), p_cost=1 (parallelism).
+/// HKDF expand uses info="cclink-pin-v1" to domain-separate the output.
+///
+/// The result is deterministic: same PIN + same salt always produces the same 32-byte key.
+// Not yet wired into the binary — will be called by publish.rs in the next plan (09-02).
+#[allow(dead_code)]
+pub fn pin_derive_key(pin: &str, salt: &[u8; 32]) -> anyhow::Result<[u8; 32]> {
+    // Argon2id with explicit parameters
+    let params = Params::new(65536, 3, 1, Some(32))
+        .map_err(|e| anyhow::anyhow!("argon2 params error: {}", e))?;
+    let argon2 = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
+
+    // Hash the PIN into 32 bytes using the salt
+    let mut argon2_output = [0u8; 32];
+    argon2
+        .hash_password_into(pin.as_bytes(), salt, &mut argon2_output)
+        .map_err(|e| anyhow::anyhow!("argon2 hash error: {}", e))?;
+
+    // Expand via HKDF-SHA256 with domain-separation info
+    let hkdf = Hkdf::<Sha256>::new(None, &argon2_output);
+    let mut okm = [0u8; 32];
+    hkdf.expand(b"cclink-pin-v1", &mut okm)
+        .map_err(|e| anyhow::anyhow!("hkdf expand error: {}", e))?;
+
+    Ok(okm)
+}
+
+/// Encrypt plaintext using a PIN-derived X25519 key.
+///
+/// Generates a random 32-byte salt, derives an X25519 key from the PIN+salt via
+/// Argon2id+HKDF, constructs an age Recipient from the derived key, and encrypts
+/// with age. Returns (ciphertext, salt) — the salt must be stored alongside the
+/// ciphertext for decryption.
+// Not yet wired into the binary — will be called by publish.rs in the next plan (09-02).
+#[allow(dead_code)]
+pub fn pin_encrypt(plaintext: &[u8], pin: &str) -> anyhow::Result<(Vec<u8>, [u8; 32])> {
+    // Generate a fresh random 32-byte salt
+    let salt: [u8; 32] = rand::thread_rng().gen();
+
+    // Derive the X25519 secret scalar from PIN+salt
+    let derived_key = pin_derive_key(pin, &salt)?;
+
+    // The derived key bytes are the X25519 secret scalar; build an age Identity from it
+    let identity = age_identity(&derived_key);
+
+    // Get the corresponding public key (Recipient)
+    let recipient = identity.to_public();
+
+    // Encrypt the plaintext to the PIN-derived Recipient
+    let ciphertext = age_encrypt(plaintext, &recipient)?;
+
+    Ok((ciphertext, salt))
+}
+
+/// Decrypt PIN-encrypted ciphertext using the original PIN and salt.
+///
+/// Re-derives the X25519 secret from PIN+salt, constructs an age Identity, and
+/// decrypts. Returns an error if the PIN is wrong or the ciphertext is malformed —
+/// never panics or returns incorrect plaintext silently.
+// Not yet wired into the binary — will be called by pickup.rs in the next plan (09-02).
+#[allow(dead_code)]
+pub fn pin_decrypt(ciphertext: &[u8], pin: &str, salt: &[u8; 32]) -> anyhow::Result<Vec<u8>> {
+    // Re-derive the X25519 secret scalar using the same PIN and salt
+    let derived_key = pin_derive_key(pin, salt)?;
+
+    // Build the age Identity from the derived key
+    let identity = age_identity(&derived_key);
+
+    // Decrypt — wrong PIN produces an age decryption error, not a panic
+    age_decrypt(ciphertext, &identity)
 }
 
 #[cfg(test)]

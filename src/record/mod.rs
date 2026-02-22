@@ -30,6 +30,10 @@ pub struct HandoffRecord {
     pub created_at: u64,
     /// Hostname of the machine that created this record.
     pub hostname: String,
+    /// Base64-encoded 32-byte random salt used for PIN key derivation (None when no PIN used).
+    /// Signed as part of the envelope — tampering causes verification failure.
+    #[serde(default)]
+    pub pin_salt: Option<String>,
     /// Project path identifier.
     pub project: String,
     /// Creator's z32-encoded Ed25519 public key.
@@ -49,7 +53,7 @@ pub struct HandoffRecord {
 /// Fields are in alphabetical order — matching HandoffRecord ordering — for deterministic
 /// canonical JSON serialization.
 ///
-/// Field order (alphabetical): blob, burn, created_at, hostname, project, pubkey, recipient, ttl
+/// Field order (alphabetical): blob, burn, created_at, hostname, pin_salt, project, pubkey, recipient, ttl
 ///
 /// v1.1 change: `burn` and `recipient` are now included in the signed envelope.
 /// This is a clean break from v1.0 — v1.0 records (signed without burn/recipient) are
@@ -64,6 +68,9 @@ pub struct HandoffRecordSignable {
     pub created_at: u64,
     /// Hostname of the machine that created this record.
     pub hostname: String,
+    /// Base64-encoded 32-byte random salt used for PIN key derivation (None when no PIN used).
+    /// Signed into the envelope so tampering with the salt is detectable.
+    pub pin_salt: Option<String>,
     /// Project path identifier.
     pub project: String,
     /// Creator's z32-encoded Ed25519 public key.
@@ -92,13 +99,14 @@ pub struct LatestPointer {
 
 impl From<&HandoffRecord> for HandoffRecordSignable {
     /// Convert a HandoffRecord to its signable form by copying all fields except `signature`.
-    /// `burn` and `recipient` are included — they are signed into the v1.1 envelope.
+    /// `burn`, `pin_salt`, and `recipient` are included — they are signed into the v1.1 envelope.
     fn from(record: &HandoffRecord) -> Self {
         HandoffRecordSignable {
             blob: record.blob.clone(),
             burn: record.burn,
             created_at: record.created_at,
             hostname: record.hostname.clone(),
+            pin_salt: record.pin_salt.clone(),
             project: record.project.clone(),
             pubkey: record.pubkey.clone(),
             recipient: record.recipient.clone(),
@@ -171,6 +179,7 @@ mod tests {
             burn: false,
             created_at: 1_700_000_000,
             hostname: "testhost".to_string(),
+            pin_salt: None,
             project: "/home/user/project".to_string(),
             pubkey: "testpubkey".to_string(),
             recipient: None,
@@ -186,6 +195,7 @@ mod tests {
             burn: false,
             created_at: 1_700_000_000,
             hostname: "testhost".to_string(),
+            pin_salt: None,
             project: "/home/user/project".to_string(),
             pubkey: "testpubkey".to_string(),
             recipient: Some("recipientkey".to_string()),
@@ -194,11 +204,12 @@ mod tests {
         let json = canonical_json(&signable).expect("canonical_json should succeed");
 
         // Find positions of each key in the JSON string
-        // Expected order: blob, burn, created_at, hostname, project, pubkey, recipient, ttl
+        // Expected order: blob, burn, created_at, hostname, pin_salt, project, pubkey, recipient, ttl
         let blob_pos = json.find("\"blob\"").expect("blob key missing");
         let burn_pos = json.find("\"burn\"").expect("burn key missing");
         let created_at_pos = json.find("\"created_at\"").expect("created_at key missing");
         let hostname_pos = json.find("\"hostname\"").expect("hostname key missing");
+        let pin_salt_pos = json.find("\"pin_salt\"").expect("pin_salt key missing");
         let project_pos = json.find("\"project\"").expect("project key missing");
         let pubkey_pos = json.find("\"pubkey\"").expect("pubkey key missing");
         let recipient_pos = json.find("\"recipient\"").expect("recipient key missing");
@@ -211,9 +222,10 @@ mod tests {
             "created_at must come before hostname"
         );
         assert!(
-            hostname_pos < project_pos,
-            "hostname must come before project"
+            hostname_pos < pin_salt_pos,
+            "hostname must come before pin_salt"
         );
+        assert!(pin_salt_pos < project_pos, "pin_salt must come before project");
         assert!(project_pos < pubkey_pos, "project must come before pubkey");
         assert!(pubkey_pos < recipient_pos, "pubkey must come before recipient");
         assert!(recipient_pos < ttl_pos, "recipient must come before ttl");
@@ -265,6 +277,7 @@ mod tests {
             burn: false,
             created_at: signable.created_at,
             hostname: signable.hostname.clone(),
+            pin_salt: None,
             project: signable.project.clone(),
             pubkey: signable.pubkey.clone(),
             recipient: None,
@@ -289,6 +302,7 @@ mod tests {
             burn: false,
             created_at: signable.created_at,
             hostname: signable.hostname.clone(),
+            pin_salt: None,
             project: signable.project.clone(),
             pubkey: signable.pubkey.clone(),
             recipient: None,
@@ -319,6 +333,7 @@ mod tests {
             burn: false,
             created_at: signable.created_at,
             hostname: signable.hostname.clone(),
+            pin_salt: None,
             project: signable.project.clone(),
             pubkey: signable.pubkey.clone(),
             recipient: None,
@@ -356,6 +371,7 @@ mod tests {
             burn: true,
             created_at: 1_700_000_000,
             hostname: "testhost".to_string(),
+            pin_salt: None,
             project: "/home/user/project".to_string(),
             pubkey: "testpubkey".to_string(),
             recipient: None,
@@ -376,6 +392,7 @@ mod tests {
             burn: false,
             created_at: 1_700_000_000,
             hostname: "testhost".to_string(),
+            pin_salt: None,
             project: "/home/user/project".to_string(),
             pubkey: "testpubkey".to_string(),
             recipient: Some("abc123".to_string()),
@@ -398,6 +415,7 @@ mod tests {
             burn: false,
             created_at: 1_700_000_000,
             hostname: "testhost".to_string(),
+            pin_salt: None,
             project: "/home/user/project".to_string(),
             pubkey: "testpubkey".to_string(),
             recipient: None,
@@ -411,6 +429,7 @@ mod tests {
             burn: true, // tampered!
             created_at: signable.created_at,
             hostname: signable.hostname.clone(),
+            pin_salt: signable.pin_salt.clone(),
             project: signable.project.clone(),
             pubkey: signable.pubkey.clone(),
             recipient: signable.recipient.clone(),
