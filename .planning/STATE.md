@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-23)
 ## Current Position
 
 Phase: 11 of 13 (Prerequisites)
-Plan: — of TBD
-Status: Ready to plan
-Last activity: 2026-02-23 — Roadmap created for v1.2 milestone (phases 11-13)
+Plan: 1 of 1 complete
+Status: In progress
+Last activity: 2026-02-23 — Completed 11-01: clippy/fmt fixes and Cargo.toml annotation
 
-Progress: [░░░░░░░░░░] 0% (v1.2)
+Progress: [█░░░░░░░░░] 10% (v1.2)
 
 ## Performance Metrics
 
@@ -43,6 +43,10 @@ Recent decisions affecting v1.2:
 - PIN enforcement: `publish.rs` only (not `pickup.rs`) — backward compatibility for records from older binaries
 - ed25519-dalek: keep `=` exact pin, bump to `=3.0.0-pre.6`, document constraint in Cargo.toml comment
 
+Phase 11 Plan 01 decisions (2026-02-23):
+- Test file headers use //! inner doc comments (not ///) — outer /// at file scope triggers clippy empty-line-after-doc-comments lint
+- Cargo.toml pin annotations explain WHY an exact pin exists and name the upstream dependency requiring it
+
 ### Pending Todos
 
 None.
@@ -55,5 +59,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-23
-Stopped at: Roadmap created, phases 11-13 defined, ready to plan Phase 11
+Stopped at: Completed 11-01-PLAN.md — clippy/fmt baseline and Cargo.toml ed25519-dalek annotation
 Resume file: None

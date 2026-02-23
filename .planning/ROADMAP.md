@@ -98,6 +98,6 @@ Plans:
 | 8. CLI Fixes and Documentation | v1.1 | 1/1 | Complete | 2026-02-22 |
 | 9. PIN-Protected Handoffs | v1.1 | 2/2 | Complete | 2026-02-22 |
 | 10. Pubky Homeserver Transport Fix | v1.1 | 2/2 | Complete | 2026-02-22 |
-| 11. Prerequisites | v1.2 | 0/2 | Not started | - |
+| 11. Prerequisites | 1/2 | In Progress|  | - |
 | 12. CI Hardening | v1.2 | 0/TBD | Not started | - |
 | 13. Code Quality and Security | v1.2 | 0/TBD | Not started | - |

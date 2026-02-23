@@ -9,12 +9,12 @@ Requirements for v1.2 Dependency Audit & Code Quality. Each maps to roadmap phas
 
 ### Dependency Audit
 
-- [ ] **DEP-01**: Document ed25519-dalek pre-release constraint in Cargo.toml comment and PROJECT.md (pkarr 5.0.3 forces `=3.0.0-pre.5`, no stable 3.x exists)
+- [x] **DEP-01**: Document ed25519-dalek pre-release constraint in Cargo.toml comment and PROJECT.md (pkarr 5.0.3 forces `=3.0.0-pre.5`, no stable 3.x exists)
 - [ ] **DEP-02**: Replace unmaintained `backoff` crate to resolve RUSTSEC-2025-0012 and transitive `instant` advisory RUSTSEC-2024-0384
 
 ### CI Hardening
 
-- [ ] **CI-01**: Fix existing clippy warnings in test files (doc comment style `///` → `//` in test files)
+- [x] **CI-01**: Fix existing clippy warnings in test files (doc comment style `///` → `//` in test files)
 - [ ] **CI-02**: Add `cargo clippy --all-targets -- -D warnings` job to CI pipeline
 - [ ] **CI-03**: Add `cargo audit` job to CI via `actions-rust-lang/audit@v1`
 - [ ] **CI-04**: Add `cargo fmt --check` job to CI pipeline
@@ -55,9 +55,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEP-01 | Phase 11 | Pending |
+| DEP-01 | Phase 11 | Complete |
 | DEP-02 | Phase 11 | Pending |
-| CI-01 | Phase 11 | Pending |
+| CI-01 | Phase 11 | Complete |
 | CI-02 | Phase 12 | Pending |
 | CI-03 | Phase 12 | Pending |
 | CI-04 | Phase 12 | Pending |
