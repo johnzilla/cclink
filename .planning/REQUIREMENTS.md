@@ -10,7 +10,7 @@ Requirements for v1.2 Dependency Audit & Code Quality. Each maps to roadmap phas
 ### Dependency Audit
 
 - [x] **DEP-01**: Document ed25519-dalek pre-release constraint in Cargo.toml comment and PROJECT.md (pkarr 5.0.3 forces `=3.0.0-pre.5`, no stable 3.x exists)
-- [ ] **DEP-02**: Replace unmaintained `backoff` crate to resolve RUSTSEC-2025-0012 and transitive `instant` advisory RUSTSEC-2024-0384
+- [x] **DEP-02**: Replace unmaintained `backoff` crate to resolve RUSTSEC-2025-0012 and transitive `instant` advisory RUSTSEC-2024-0384
 
 ### CI Hardening
 
@@ -56,7 +56,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | DEP-01 | Phase 11 | Complete |
-| DEP-02 | Phase 11 | Pending |
+| DEP-02 | Phase 11 | Complete |
 | CI-01 | Phase 11 | Complete |
 | CI-02 | Phase 12 | Pending |
 | CI-03 | Phase 12 | Pending |
