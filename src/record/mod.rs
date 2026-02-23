@@ -18,29 +18,36 @@ use serde::{Deserialize, Serialize};
 /// (HandoffRecordSignable), so tampering with either field causes signature
 /// verification failure. v1.0 records (signed without these fields) are not
 /// supported — they expire via TTL (clean break).
+///
+/// Fields with default values use `skip_serializing_if` to reduce JSON size in the
+/// DHT (max 912 bytes of JSON in a SignedPacket). Signatures are computed over
+/// HandoffRecordSignable which always serializes all fields — so skipping
+/// defaults in HandoffRecord does not affect signature stability.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct HandoffRecord {
     /// Base64-encoded age ciphertext containing the encrypted session payload.
     pub blob: String,
     /// Burn-after-read flag: if true, the record should be deleted after first successful pickup.
     /// Signed as part of the v1.1 envelope — tampering causes verification failure.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub burn: bool,
     /// Unix timestamp (seconds) when the record was created.
     pub created_at: u64,
-    /// Hostname of the machine that created this record.
+    /// Hostname of the machine that created this record (empty since v1.1 — encrypted in blob).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub hostname: String,
     /// Base64-encoded 32-byte random salt used for PIN key derivation (None when no PIN used).
     /// Signed as part of the envelope — tampering causes verification failure.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pin_salt: Option<String>,
-    /// Project path identifier.
+    /// Project path identifier (empty since v1.1 — encrypted in blob).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub project: String,
     /// Creator's z32-encoded Ed25519 public key.
     pub pubkey: String,
     /// Optional z32-encoded public key of the intended recipient (None = self-encrypted).
     /// Signed as part of the v1.1 envelope — tampering causes verification failure.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub recipient: Option<String>,
     /// Base64-encoded Ed25519 signature over canonical JSON of the signable fields.
     pub signature: String,
@@ -470,32 +477,21 @@ mod size_analysis {
     use super::*;
     use base64::Engine;
 
+    /// Verify that HandoffRecord JSON fits within the 912-byte SignedPacket capacity.
+    ///
+    /// Uses a fixed-size blob to make the test deterministic (age ciphertext
+    /// varies by ~120 bytes per run due to randomized encryption).
     #[test]
     fn analyze_record_sizes_with_encrypted_payload() {
-        // Simulate the new format: Payload JSON encrypted into blob,
-        // outer hostname/project are empty strings.
-        let payload = Payload {
-            hostname: "macbook-pro-m3".to_string(),
-            project: "/Users/john/projects/my-app".to_string(),
-            session_id: "3c0a3f7a-1234-5678-abcd-ef1234567890".to_string(),
-        };
-        let payload_json = serde_json::to_vec(&payload).expect("serialize payload");
-        println!("\n=== ENCRYPTED PAYLOAD SIZE ANALYSIS ===");
-        println!("Payload JSON: {} bytes", payload_json.len());
-        println!("  {}", String::from_utf8_lossy(&payload_json));
+        // Empirically determined: max JSON fitting in a `_cclink` TXT record
+        // inside a 1000-byte SignedPacket is 912 bytes (DNS overhead ~88 bytes).
+        const MAX_JSON: usize = 912;
 
-        // Encrypt with age (self-encrypt path)
-        let keypair = pkarr::Keypair::from_secret_key(&[42u8; 32]);
-        let x25519_pubkey = crate::crypto::ed25519_to_x25519_public(&keypair);
-        let recipient = crate::crypto::age_recipient(&x25519_pubkey);
-        let ciphertext = crate::crypto::age_encrypt(&payload_json, &recipient)
-            .expect("encrypt");
-        println!("Age ciphertext: {} bytes", ciphertext.len());
+        // Fixed blob: 600 chars = base64 of ~450-byte ciphertext.
+        // Observed age ciphertext range for 99-byte payload: 324-447 bytes.
+        // 600 chars covers the worst case with margin.
+        let blob = "A".repeat(600);
 
-        let blob = base64::engine::general_purpose::STANDARD.encode(&ciphertext);
-        println!("Base64 blob: {} chars", blob.len());
-
-        // Build full HandoffRecord with empty outer fields
         let typical_sig_b64 = "YXNkZnNhZGZzYWRmc2FkZnNhZGZzYWRmc2FkZnNhZGZzYWRmc2FkZnNhZGZzYWRmc2FkZnNhZGZzYWRmc2FkZg==";
         let record = HandoffRecord {
             blob: blob.clone(),
@@ -511,31 +507,82 @@ mod size_analysis {
         };
 
         let record_json = serde_json::to_string(&record).expect("serialize record");
-        println!("\nFull HandoffRecord JSON: {} bytes", record_json.len());
-
-        // Must fit in 1000-byte SignedPacket DNS payload
+        println!("\nBase HandoffRecord JSON: {} bytes (limit {})", record_json.len(), MAX_JSON);
         assert!(
-            record_json.len() <= 950,
-            "HandoffRecord JSON ({} bytes) must fit comfortably in 1000-byte SignedPacket",
-            record_json.len()
+            record_json.len() <= MAX_JSON,
+            "Base HandoffRecord JSON ({} bytes) must fit in {}-byte SignedPacket capacity",
+            record_json.len(), MAX_JSON
         );
 
-        // Test with all optional fields set (worst case)
-        println!("\n=== WORST CASE (pin_salt + recipient) ===");
-        let record_max = HandoffRecord {
+        // Worst realistic case: pin_salt set (--pin)
+        let record_pin = HandoffRecord {
+            pin_salt: Some("K9s8Vz2xR4pL1mQ7jD6wY5bT0fN3cE8oP9gUaWx2Cg==".to_string()),
+            ..record.clone()
+        };
+        let pin_json = serde_json::to_string(&record_pin).expect("serialize");
+        println!("With pin_salt: {} bytes", pin_json.len());
+        assert!(
+            pin_json.len() <= MAX_JSON,
+            "HandoffRecord with pin_salt ({} bytes) must fit in {}-byte capacity",
+            pin_json.len(), MAX_JSON
+        );
+
+        // Worst realistic case: recipient set (--share)
+        let record_share = HandoffRecord {
+            recipient: Some("qjmqtwt9dhfhf3ndtbzj3ddncct1s75kq13wy9ypkf39jzwpw5iy".to_string()),
+            ..record.clone()
+        };
+        let share_json = serde_json::to_string(&record_share).expect("serialize");
+        println!("With recipient: {} bytes", share_json.len());
+        assert!(
+            share_json.len() <= MAX_JSON,
+            "HandoffRecord with recipient ({} bytes) must fit in {}-byte capacity",
+            share_json.len(), MAX_JSON
+        );
+
+        // pin_salt + recipient cannot coexist (--pin conflicts_with --share)
+        // but test it for safety margin awareness
+        let record_both = HandoffRecord {
             pin_salt: Some("K9s8Vz2xR4pL1mQ7jD6wY5bT0fN3cE8oP9gUaWx2Cg==".to_string()),
             recipient: Some("qjmqtwt9dhfhf3ndtbzj3ddncct1s75kq13wy9ypkf39jzwpw5iy".to_string()),
             ..record.clone()
         };
-        let max_json = serde_json::to_string(&record_max).expect("serialize record");
-        println!("Max HandoffRecord JSON: {} bytes", max_json.len());
-        assert!(
-            max_json.len() <= 950,
-            "Max HandoffRecord JSON ({} bytes) must fit in 1000-byte SignedPacket",
-            max_json.len()
-        );
+        let both_json = serde_json::to_string(&record_both).expect("serialize");
+        println!("With both (impossible in practice): {} bytes", both_json.len());
+        // This is allowed to exceed MAX_JSON since --pin + --share is CLI-rejected
+    }
 
-        // Verify no plaintext metadata in the record JSON
+    /// Verify no plaintext metadata leaks through encrypted blob into record JSON.
+    #[test]
+    fn encrypted_payload_no_plaintext_leak() {
+        let payload = Payload {
+            hostname: "macbook-pro-m3".to_string(),
+            project: "/Users/john/projects/my-app".to_string(),
+            session_id: "3c0a3f7a-1234-5678-abcd-ef1234567890".to_string(),
+        };
+        let payload_json = serde_json::to_vec(&payload).expect("serialize payload");
+
+        let keypair = pkarr::Keypair::from_secret_key(&[42u8; 32]);
+        let x25519_pubkey = crate::crypto::ed25519_to_x25519_public(&keypair);
+        let recipient = crate::crypto::age_recipient(&x25519_pubkey);
+        let ciphertext = crate::crypto::age_encrypt(&payload_json, &recipient).expect("encrypt");
+        let blob = base64::engine::general_purpose::STANDARD.encode(&ciphertext);
+
+        let typical_sig_b64 = "YXNkZnNhZGZzYWRmc2FkZnNhZGZzYWRmc2FkZnNhZGZzYWRmc2FkZnNhZGZzYWRmc2FkZnNhZGZzYWRmc2FkZg==";
+        let record = HandoffRecord {
+            blob,
+            burn: false,
+            created_at: 1740000000u64,
+            hostname: String::new(),
+            pin_salt: None,
+            project: String::new(),
+            pubkey: "qjmqtwt9dhfhf3ndtbzj3ddncct1s75kq13wy9ypkf39jzwpw5iy".to_string(),
+            recipient: None,
+            signature: typical_sig_b64.to_string(),
+            ttl: 86400,
+        };
+        let record_json = serde_json::to_string(&record).expect("serialize record");
+
         assert!(!record_json.contains("macbook-pro-m3"), "hostname must not appear in cleartext");
         assert!(!record_json.contains("/Users/john/projects"), "project path must not appear in cleartext");
         assert!(!record_json.contains("3c0a3f7a"), "session ID must not appear in cleartext");

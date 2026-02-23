@@ -175,7 +175,7 @@ mod tests {
 
     #[test]
     fn test_dht_client_new() {
-        let keypair = fixed_keypair();
+        let _keypair = fixed_keypair();
         let client = DhtClient::new();
         assert!(
             client.is_ok(),
