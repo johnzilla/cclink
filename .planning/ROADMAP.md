@@ -57,7 +57,10 @@ Full details: `milestones/v1.1-ROADMAP.md`
   2. `cargo fmt --check` exits 0 on all source files
   3. `cargo audit` produces no unresolved vulnerability or unmaintained advisories (backoff replaced or explicitly ignored in audit.toml with documented rationale)
   4. ed25519-dalek pre-release pin is documented in Cargo.toml with a comment explaining the pkarr 5.0.3 constraint
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 11-01-PLAN.md — Fix clippy warnings, apply rustfmt, document ed25519-dalek pin
+- [ ] 11-02-PLAN.md — Replace backoff with backon to resolve RUSTSEC advisories
 
 ### Phase 12: CI Hardening
 **Goal**: Every pull request and push to main runs clippy, rustfmt, and cargo-audit as separate parallel CI jobs, with failures attributed to the correct gate
@@ -95,6 +98,6 @@ Full details: `milestones/v1.1-ROADMAP.md`
 | 8. CLI Fixes and Documentation | v1.1 | 1/1 | Complete | 2026-02-22 |
 | 9. PIN-Protected Handoffs | v1.1 | 2/2 | Complete | 2026-02-22 |
 | 10. Pubky Homeserver Transport Fix | v1.1 | 2/2 | Complete | 2026-02-22 |
-| 11. Prerequisites | v1.2 | 0/TBD | Not started | - |
+| 11. Prerequisites | v1.2 | 0/2 | Not started | - |
 | 12. CI Hardening | v1.2 | 0/TBD | Not started | - |
 | 13. Code Quality and Security | v1.2 | 0/TBD | Not started | - |
