@@ -103,7 +103,7 @@ Plans:
 | 7. Code Quality and Transport | 2/2 | Complete    | 2026-02-22 | - |
 | 8. CLI Fixes and Documentation | v1.1 | Complete    | 2026-02-22 | 2026-02-22 |
 | 9. PIN-Protected Handoffs | 2/2 | Complete   | 2026-02-22 | - |
-| 10. Pubky Homeserver Transport Fix | v1.1 | 0/? | Not started | - |
+| 10. Pubky Homeserver Transport Fix | v1.1 | 0/2 | Not started | - |
 
 ### Phase 10: Pubky Homeserver Transport Fix
 **Goal**: The transport layer works correctly against the real Pubky homeserver API — Host header identifies tenants, signup flow handles first-time users, and all CRUD operations succeed against live pubky.app
@@ -116,7 +116,8 @@ Plans:
   4. GET cross-user records uses Host header instead of embedding pubkey in URL path
   5. List parsing correctly handles full pubky:// URI format returned by homeserver directory listings
   6. Full end-to-end flow works: cclink init -> cclink (publish) -> cclink pickup against live pubky.app
-**Plans:** TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 10 to break down)
+- [ ] 10-01-PLAN.md — Host header on all requests, signup fallback, cross-user URL fix
+- [ ] 10-02-PLAN.md — Update command callers, harden list parsing, full test suite
