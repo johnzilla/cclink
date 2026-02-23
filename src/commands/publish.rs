@@ -1,5 +1,5 @@
 /// Publish command — discovers or uses a specified Claude Code session, encrypts it,
-/// signs the record, publishes to the homeserver, and prints colored output.
+/// signs the record, publishes to the PKARR DHT, and prints colored output.
 use std::io::IsTerminal;
 use std::time::SystemTime;
 
@@ -13,9 +13,8 @@ use crate::error::CclinkError;
 /// If `cli.session_id` is `Some`, publish that session directly.
 /// Otherwise, discover active sessions and prompt if multiple exist.
 pub fn run_publish(cli: &crate::cli::Cli) -> anyhow::Result<()> {
-    // ── 1. Load keypair and homeserver ────────────────────────────────────
+    // ── 1. Load keypair ────────────────────────────────────────────────
     let keypair = crate::keys::store::load_keypair()?;
-    let homeserver = crate::keys::store::read_homeserver()?;
 
     // ── 2. Resolve session ────────────────────────────────────────────────
     let session = if let Some(ref id) = cli.session_id {
@@ -139,9 +138,10 @@ pub fn run_publish(cli: &crate::cli::Cli) -> anyhow::Result<()> {
         ttl: signable.ttl,
     };
 
-    // ── 6. Publish to homeserver ──────────────────────────────────────────
-    let client = crate::transport::HomeserverClient::new(&homeserver, &keypair.public_key().to_z32())?;
-    let token = client.publish(&keypair, &record)?;
+    // ── 6. Publish to DHT ──────────────────────────────────────────────
+    let pubkey_z32 = keypair.public_key().to_z32();
+    let client = crate::transport::DhtClient::new()?;
+    client.publish(&keypair, &record)?;
 
     // ── 7. Output success ─────────────────────────────────────────────────
     if cli.burn {
@@ -164,14 +164,13 @@ pub fn run_publish(cli: &crate::cli::Cli) -> anyhow::Result<()> {
     );
     if cli.share.is_some() {
         // Shared: recipient needs to specify the publisher's pubkey to pick up
-        let own_pubkey = keypair.public_key().to_z32();
         println!("  Recipient pickup command:");
         println!(
             "  {}",
-            format!("cclink pickup {}", own_pubkey).if_supports_color(Stdout, |t| t.bold())
+            format!("cclink pickup {}", pubkey_z32).if_supports_color(Stdout, |t| t.bold())
         );
     } else {
-        // Self: pickup resolves via the latest pointer; no token argument needed
+        // Self: pickup resolves via own public key
         println!("  Run on another machine:");
         println!(
             "  {}",
@@ -184,7 +183,7 @@ pub fn run_publish(cli: &crate::cli::Cli) -> anyhow::Result<()> {
     // ── 8. Optional QR code ───────────────────────────────────────────────
     if cli.qr {
         println!();
-        qr2term::print_qr(format!("cclink pickup {}", token))
+        qr2term::print_qr(format!("cclink pickup {}", pubkey_z32))
             .map_err(|e| anyhow::anyhow!("QR code render failed: {}", e))?;
     }
 

@@ -2,7 +2,7 @@
 name = "cclink"
 version = "0.1.0"
 edition = "2021"
-description = "Secure session handoff between devices via Pubky"
+description = "Secure session handoff between devices via PKARR DHT"
 license = "MIT"
 repository = "https://github.com/user/cclink"
 homepage = "https://github.com/user/cclink"
@@ -15,9 +15,8 @@ name = "cclink"
 path = "src/main.rs"
 
 [dependencies]
-pkarr = { version = "5.0.3", default-features = false, features = ["keys"] }
-pubky = "0.6.0"
-tokio = { version = "1", features = ["full"] }
+pkarr = { version = "5.0.3", default-features = false, features = ["dht"] }
+ed25519-dalek = "=3.0.0-pre.5"
 clap = { version = "4.5", features = ["derive"] }
 anyhow = "1.0"
 thiserror = "2.0"
@@ -29,7 +28,6 @@ base64 = "0.22"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 gethostname = "0.5"
-ed25519-dalek = "=3.0.0-pre.6"
 owo-colors = { version = "4", features = ["supports-colors"] }
 dialoguer = "0.12"
 qr2term = "0.3"

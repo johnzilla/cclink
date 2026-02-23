@@ -1,125 +1,57 @@
-/// Revoke command — deletes a handoff record (or all records) from the homeserver.
+/// Revoke command — publishes an empty SignedPacket to revoke the active handoff.
 use std::io::IsTerminal;
 
 use owo_colors::{OwoColorize, Stream::Stdout};
 
-/// Revoke a single handoff record or all records on the homeserver.
+/// Revoke the active handoff record from the DHT.
 ///
-/// Single-token revoke (MGT-02): fetches record details for the confirmation prompt,
-/// then deletes the record. If the record is not found or fails verification, still
-/// offers to delete (covers corrupted/partially-written records).
-///
-/// Batch revoke (MGT-03): lists all tokens, shows count in confirmation prompt,
-/// then deletes all records in sequence.
-///
-/// `--yes` / `-y` skips the confirmation prompt in both modes.
+/// Resolves the current record to show details in the confirmation prompt,
+/// then publishes an empty SignedPacket to overwrite it. The `token` and `--all`
+/// args are accepted but ignored (one record per identity on the DHT).
 pub fn run_revoke(args: crate::cli::RevokeArgs) -> anyhow::Result<()> {
-    // ── 1. Load keypair and homeserver ────────────────────────────────────
+    // ── 1. Load keypair ──────────────────────────────────────────────────
     let keypair = crate::keys::store::load_keypair()?;
-    let homeserver = crate::keys::store::read_homeserver()?;
-    let client = crate::transport::HomeserverClient::new(&homeserver, &keypair.public_key().to_z32())?;
-    client.signin(&keypair)?;
+    let own_z32 = keypair.public_key().to_z32();
+    let client = crate::transport::DhtClient::new()?;
 
-    // ── 2. Validate args ──────────────────────────────────────────────────
-    if args.token.is_none() && !args.all {
-        anyhow::bail!("Provide a token to revoke, or use --all to revoke all handoffs.");
-    }
-
-    // ── 3. Handle --all mode (MGT-03) ─────────────────────────────────────
-    if args.all {
-        let tokens = client.list_record_tokens()?;
-        if tokens.is_empty() {
-            println!("No active handoffs.");
-            return Ok(());
-        }
-        let count = tokens.len();
-        let skip_confirm = args.yes || !std::io::stdin().is_terminal();
-        if !skip_confirm {
-            let confirmed = dialoguer::Confirm::new()
-                .with_prompt(format!(
-                    "This will revoke {} active handoff{}. Continue?",
-                    count,
-                    if count == 1 { "" } else { "s" }
-                ))
-                .default(false)
-                .interact()
-                .map_err(|e| anyhow::anyhow!("prompt failed: {}", e))?;
-            if !confirmed {
-                println!("Aborted.");
+    // ── 2. Resolve current record ────────────────────────────────────────
+    let record = match client.resolve_record(&own_z32) {
+        Ok(r) => r,
+        Err(e) => {
+            if e.downcast_ref::<crate::error::CclinkError>()
+                .is_some_and(|ce| matches!(ce, crate::error::CclinkError::RecordNotFound))
+            {
+                println!("No active handoffs.");
                 return Ok(());
             }
+            return Err(e);
         }
-        for token in &tokens {
-            client.delete_record(token)?;
-        }
-        println!(
-            "{}",
-            format!(
-                "Revoked {} handoff{}.",
-                count,
-                if count == 1 { "" } else { "s" }
-            )
-            .if_supports_color(Stdout, |t| t.green())
-        );
-        return Ok(());
-    }
+    };
 
-    // ── 4. Handle single-token revoke (MGT-02) ────────────────────────────
-    let token = args.token.as_ref().unwrap(); // Safe: validated above
-
-    // Fetch the record to show details in the confirmation prompt
-    match client.get_record(token, &keypair.public_key()) {
-        Ok(record) => {
-            let token_prefix = if token.len() > 8 { &token[..8] } else { token.as_str() };
-            let skip_confirm = args.yes || !std::io::stdin().is_terminal();
-            if !skip_confirm {
-                let confirmed = dialoguer::Confirm::new()
-                    .with_prompt(format!(
-                        "Revoke handoff {}... ({})?",
-                        token_prefix, record.project
-                    ))
-                    .default(false)
-                    .interact()
-                    .map_err(|e| anyhow::anyhow!("prompt failed: {}", e))?;
-                if !confirmed {
-                    println!("Aborted.");
-                    return Ok(());
-                }
-            }
-            client.delete_record(token)?;
-            println!(
-                "{} {} ({})",
-                "Revoked.".if_supports_color(Stdout, |t| t.green()),
-                token_prefix,
+    // ── 3. Confirmation prompt ───────────────────────────────────────────
+    let skip_confirm = args.yes || !std::io::stdin().is_terminal();
+    if !skip_confirm {
+        let confirmed = dialoguer::Confirm::new()
+            .with_prompt(format!(
+                "Revoke handoff for {}?",
                 record.project
-            );
-        }
-        Err(_) => {
-            // Record not found or verification failed — try deleting anyway
-            // (might be a corrupted record the user still wants removed)
-            let skip_confirm = args.yes || !std::io::stdin().is_terminal();
-            if !skip_confirm {
-                let token_prefix = if token.len() > 8 { &token[..8] } else { token.as_str() };
-                let confirmed = dialoguer::Confirm::new()
-                    .with_prompt(format!(
-                        "Record {}... not found or corrupt. Delete anyway?",
-                        token_prefix
-                    ))
-                    .default(false)
-                    .interact()
-                    .map_err(|e| anyhow::anyhow!("prompt failed: {}", e))?;
-                if !confirmed {
-                    println!("Aborted.");
-                    return Ok(());
-                }
-            }
-            client.delete_record(token)?;
-            println!(
-                "{}",
-                "Revoked.".if_supports_color(Stdout, |t| t.green())
-            );
+            ))
+            .default(false)
+            .interact()
+            .map_err(|e| anyhow::anyhow!("prompt failed: {}", e))?;
+        if !confirmed {
+            println!("Aborted.");
+            return Ok(());
         }
     }
+
+    // ── 4. Revoke by publishing empty packet ─────────────────────────────
+    client.revoke(&keypair)?;
+    println!(
+        "{} ({})",
+        "Revoked.".if_supports_color(Stdout, |t| t.green()),
+        record.project
+    );
 
     Ok(())
 }

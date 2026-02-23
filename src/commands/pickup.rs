@@ -1,13 +1,11 @@
-/// Pickup command — retrieves the latest handoff from the homeserver, verifies its
+/// Pickup command — retrieves the handoff from the PKARR DHT, verifies its
 /// signature, checks TTL, decrypts the session ID, shows a confirmation prompt,
 /// and execs `claude --resume`.
 ///
-/// Self-pickup (no pubkey arg): decrypts with own key. Shows error if record was
-/// encrypted for a different recipient (--share record).
-/// Cross-user pickup (pubkey arg): attempts decryption with own key. On success,
-/// record was shared with us. On failure, shows cleartext metadata and exits.
-/// Burn-after-read: on self-pickup of a --burn record, DELETE is called after
-/// successful decryption and before exec.
+/// Self-pickup (no pubkey arg): resolves own public key from the DHT.
+/// Cross-user pickup (pubkey arg): resolves the specified public key.
+/// Burn-after-read: on self-pickup of a --burn record, publishes an empty packet
+/// to revoke the record before exec.
 use std::io::IsTerminal;
 use std::time::SystemTime;
 
@@ -45,12 +43,16 @@ fn launch_claude_resume(session_id: &str) -> anyhow::Result<()> {
 pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
     use backoff::{retry, ExponentialBackoff, Error as BackoffError};
 
-    // ── 1. Load keypair and homeserver ────────────────────────────────────
+    // ── 1. Load keypair ──────────────────────────────────────────────────
     let keypair = crate::keys::store::load_keypair()?;
-    let homeserver = crate::keys::store::read_homeserver()?;
-    let client = crate::transport::HomeserverClient::new(&homeserver, &keypair.public_key().to_z32())?;
+    let own_z32 = keypair.public_key().to_z32();
 
-    // ── 2. Retrieve record with retry/backoff (RET-06) ────────────────────
+    let is_cross_user = args.pubkey.is_some();
+    let target_z32 = args.pubkey.as_deref().unwrap_or(&own_z32);
+
+    let client = crate::transport::DhtClient::new()?;
+
+    // ── 2. Retrieve record with retry/backoff ────────────────────────────
     let backoff_config = ExponentialBackoff {
         max_elapsed_time: Some(std::time::Duration::from_secs(30)),
         max_interval: std::time::Duration::from_secs(8),
@@ -58,69 +60,24 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
         ..Default::default()
     };
 
-    let is_cross_user = args.pubkey.is_some();
-    let pk_z32_opt = args.pubkey.clone();
-
+    let target_z32_owned = target_z32.to_string();
     let record = retry(backoff_config, || {
-        // Get the latest pointer
-        let latest_bytes = match client.get_latest(pk_z32_opt.as_deref()) {
-            Ok(bytes) => bytes,
+        match client.resolve_record(&target_z32_owned) {
+            Ok(r) => Ok(r),
             Err(e) => {
                 if e.downcast_ref::<crate::error::CclinkError>()
                     .is_some_and(|ce| matches!(ce, crate::error::CclinkError::RecordNotFound))
                 {
-                    return Err(BackoffError::permanent(e));
-                }
-                return Err(BackoffError::transient(e));
-            }
-        };
-
-        // Deserialize the latest pointer to get the token
-        let latest: crate::record::LatestPointer =
-            serde_json::from_slice(&latest_bytes)
-                .map_err(|e| BackoffError::permanent(anyhow::anyhow!("failed to parse latest pointer: {}", e)))?;
-
-        let token = &latest.token;
-
-        // Fetch and verify the full record
-        if let Some(ref pk_z32) = pk_z32_opt {
-            let parsed_pubkey = pkarr::PublicKey::try_from(pk_z32.as_str())
-                .map_err(|e| BackoffError::permanent(anyhow::anyhow!("invalid pubkey: {}", e)))?;
-
-            match client.get_record_by_pubkey(pk_z32, token, &parsed_pubkey) {
-                Ok(r) => Ok(r),
-                Err(e) => {
-                    if e.downcast_ref::<crate::error::CclinkError>()
-                        .is_some_and(|ce| matches!(ce, crate::error::CclinkError::RecordNotFound))
-                    {
-                        Err(BackoffError::permanent(e))
-                    } else {
-                        Err(BackoffError::transient(e))
-                    }
-                }
-            }
-        } else {
-            // Self-pickup: sign in first (session cookie needed), then get record
-            if let Err(e) = client.signin(&keypair) {
-                return Err(BackoffError::transient(e));
-            }
-            match client.get_record(token, &keypair.public_key()) {
-                Ok(r) => Ok(r),
-                Err(e) => {
-                    if e.downcast_ref::<crate::error::CclinkError>()
-                        .is_some_and(|ce| matches!(ce, crate::error::CclinkError::RecordNotFound))
-                    {
-                        Err(BackoffError::permanent(e))
-                    } else {
-                        Err(BackoffError::transient(e))
-                    }
+                    Err(BackoffError::permanent(e))
+                } else {
+                    Err(BackoffError::transient(e))
                 }
             }
         }
     })
     .map_err(|e| anyhow::anyhow!("Failed to retrieve handoff after retries: {}", e))?;
 
-    // ── 3. TTL expiry check (RET-03) ──────────────────────────────────────
+    // ── 3. TTL expiry check ──────────────────────────────────────────────
     let now_secs = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .map(|d| d.as_secs())
@@ -144,16 +101,13 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
         );
     }
 
-    // ── 4. Decrypt or show metadata ───────────────────────────────────────
+    // ── 4. Decrypt or show metadata ──────────────────────────────────────
     let age_secs = now_secs.saturating_sub(record.created_at);
     let human_age = human_duration(age_secs);
 
-    // Derive token from created_at (matches transport publish() convention)
-    let token = record.created_at.to_string();
-
     let session_id: String;
 
-    // ── PIN-protected record detection ────────────────────────────────────
+    // ── PIN-protected record detection ───────────────────────────────────
     if let Some(ref pin_salt_b64) = record.pin_salt {
         // Non-interactive guard: PIN prompt requires a terminal
         if !std::io::stdin().is_terminal() {
@@ -193,8 +147,6 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
         }
     } else if is_cross_user {
         // Cross-user pickup: attempt decryption with own key.
-        // If the record was encrypted for us (--share), decryption succeeds.
-        // If not (self-encrypted or shared with someone else), show metadata.
         let ciphertext = base64::engine::general_purpose::STANDARD
             .decode(&record.blob)
             .map_err(|e| anyhow::anyhow!("failed to decode blob: {}", e))?;
@@ -203,7 +155,6 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
 
         match crate::crypto::age_decrypt(&ciphertext, &identity) {
             Ok(plaintext) => {
-                // Decryption succeeded — this record was shared with us
                 session_id = String::from_utf8(plaintext)
                     .map_err(|e| anyhow::anyhow!("session ID is not valid UTF-8: {}", e))?;
             }
@@ -241,9 +192,8 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
     } else {
         // Self-pickup path
 
-        // Check if this is the publisher's own --share record (encrypted for a different recipient)
+        // Check if this is the publisher's own --share record
         if let Some(ref intended_recipient) = record.recipient {
-            // Publisher trying to pick up their own --share record — cannot decrypt
             eprintln!(
                 "{}",
                 format!(
@@ -269,21 +219,20 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
             .map_err(|e| anyhow::anyhow!("session ID is not valid UTF-8: {}", e))?;
     }
 
-    // ── 5. Burn-after-read (ENC-02) ───────────────────────────────────────
-    // Only attempt DELETE on self-pickup: we have auth (session cookie from signin above).
-    // Cross-user pickup cannot auth to delete the publisher's record.
-    // DELETE must happen BEFORE exec (which replaces the process).
+    // ── 5. Burn-after-read ───────────────────────────────────────────────
+    // Only attempt revoke on self-pickup: we have the keypair to sign a new packet.
+    // Cross-user pickup cannot revoke the publisher's record.
     if record.burn && !is_cross_user {
-        if let Err(e) = client.delete_record(&token) {
+        if let Err(e) = client.revoke(&keypair) {
             eprintln!(
                 "{}",
-                format!("Warning: burn deletion failed: {}", e)
+                format!("Warning: burn revocation failed: {}", e)
                     .if_supports_color(Stdout, |t| t.yellow())
             );
         }
     }
 
-    // ── 6. Confirmation prompt (RET-04) ───────────────────────────────────
+    // ── 6. Confirmation prompt ───────────────────────────────────────────
     let skip_confirm = args.yes || !std::io::stdin().is_terminal();
     if !skip_confirm {
         let confirmed = dialoguer::Confirm::new()
@@ -303,13 +252,13 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
         }
     }
 
-    // ── 7. Optional QR code (RET-05) ──────────────────────────────────────
+    // ── 7. Optional QR code ──────────────────────────────────────────────
     if args.qr {
         qr2term::print_qr(&session_id)
             .map_err(|e| anyhow::anyhow!("QR code render failed: {}", e))?;
     }
 
-    // ── 8. Launch claude --resume (RET-04) ────────────────────────────────
+    // ── 8. Launch claude --resume ────────────────────────────────────────
     println!(
         "{}",
         format!("Resuming session {}...", &session_id[..8.min(session_id.len())])
@@ -319,4 +268,3 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
 
     Ok(())
 }
-

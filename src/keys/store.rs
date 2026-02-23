@@ -58,6 +58,7 @@ pub fn write_keypair_atomic(keypair: &pkarr::Keypair, dest: &Path) -> anyhow::Re
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn write_homeserver(homeserver: &str) -> anyhow::Result<()> {
     let path = homeserver_path()?;
     std::fs::write(&path, homeserver)
@@ -65,6 +66,7 @@ pub fn write_homeserver(homeserver: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn read_homeserver() -> anyhow::Result<String> {
     let default_pk = "ufibwbmed6jeq9k4p583go95wofakh9fwpp4k734trq79pd9u1uy";
     let path = homeserver_path()?;

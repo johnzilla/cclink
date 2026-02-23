@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "cclink", version, about = "Hand off a Claude Code session to another machine via Pubky")]
+#[command(name = "cclink", version, about = "Hand off a Claude Code session to another machine via PKARR DHT")]
 pub struct Cli {
     /// Claude Code session ID to publish (auto-discovers most recent if omitted)
     #[arg(value_name = "SESSION_ID")]
@@ -35,13 +35,13 @@ pub struct Cli {
 pub enum Commands {
     /// Initialize or import a PKARR keypair
     Init(InitArgs),
-    /// Show identity (public key, homeserver, fingerprint)
+    /// Show identity (public key, fingerprint)
     Whoami,
-    /// Pick up a Claude Code session handoff from the homeserver
+    /// Pick up a Claude Code session handoff from the DHT
     Pickup(PickupArgs),
-    /// List all active handoff records on the homeserver
+    /// Show the active handoff record on the DHT
     List,
-    /// Revoke (delete) a handoff record from the homeserver
+    /// Revoke the active handoff record from the DHT
     Revoke(RevokeArgs),
 }
 
@@ -50,10 +50,6 @@ pub struct InitArgs {
     /// Import an existing keypair from file path or stdin (use - for stdin)
     #[arg(long, value_name = "PATH")]
     pub import: Option<String>,
-
-    /// Homeserver public key to associate with this keypair
-    #[arg(long, default_value = "ufibwbmed6jeq9k4p583go95wofakh9fwpp4k734trq79pd9u1uy")]
-    pub homeserver: String,
 
     /// Skip overwrite confirmation prompt
     #[arg(long, short = 'y')]

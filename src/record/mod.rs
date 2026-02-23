@@ -81,6 +81,7 @@ pub struct HandoffRecordSignable {
     pub ttl: u64,
 }
 
+#[allow(dead_code)]
 /// A pointer stored at `latest.json` that references the most recent HandoffRecord.
 ///
 /// Contains summary metadata so consumers can quickly check freshness without
@@ -442,5 +443,91 @@ mod tests {
             result.is_err(),
             "verify_record must fail when burn field is tampered after signing"
         );
+    }
+}
+
+#[cfg(test)]
+mod size_analysis {
+    use super::*;
+
+    #[test]
+    fn analyze_record_sizes() {
+        // Typical session ID from Claude Code (UUID-like)
+        let session_id = "3c0a3f7a-1234-5678-abcd-ef1234567890";
+        
+        // Build a realistic signable record
+        let signable = HandoffRecordSignable {
+            blob: "YWdlLWVuY3J5cHRpb24rdjEAAAAA6PQdnjJG7+wL0H4SEZomAAAAAADo9B2eK/PN".to_string(), // simulated age blob
+            burn: false,
+            created_at: 1740000000u64,
+            hostname: "macbook-pro-m3".to_string(),
+            pin_salt: None,
+            project: "/Users/john/projects/my-app".to_string(),
+            pubkey: "qjmqtwt9dhfhf3ndtbzj3ddncct1s75kq13wy9ypkf39jzwpw5iy".to_string(), // z32 format
+            recipient: None,
+            ttl: 86400,
+        };
+        
+        let sig_json = canonical_json(&signable).expect("canonical_json");
+        println!("\n=== HANDOFF RECORD SIZE ANALYSIS ===");
+        println!("Session ID plaintext: {} bytes", session_id.len());
+        println!("Canonical signable JSON: {} bytes", sig_json.len());
+        println!("  JSON: {}", sig_json);
+        
+        // Signature is base64-encoded 64-byte Ed25519 signature
+        // 64 bytes * 4/3 = ~86-88 bytes in base64
+        let typical_sig_b64 = "YXNkZnNhZGZzYWRmc2FkZnNhZGZzYWRmc2FkZnNhZGZzYWRmc2FkZnNhZGZzYWRmc2FkZnNhZGZzYWRmc2FkZg==";
+        println!("Signature (base64): {} bytes (Ed25519 sig is 64 bytes -> ~88 base64)", typical_sig_b64.len());
+        
+        // Build full record (no pin_salt)
+        let record = HandoffRecord {
+            blob: signable.blob.clone(),
+            burn: false,
+            created_at: signable.created_at,
+            hostname: signable.hostname.clone(),
+            pin_salt: None,
+            project: signable.project.clone(),
+            pubkey: signable.pubkey.clone(),
+            recipient: None,
+            signature: typical_sig_b64.to_string(),
+            ttl: signable.ttl,
+        };
+        
+        let record_json = serde_json::to_string(&record).expect("serialize record");
+        println!("\nFull HandoffRecord JSON: {} bytes", record_json.len());
+        println!("{}", record_json);
+        
+        // Now test with optional fields set
+        println!("\n=== WITH PIN SALT ===");
+        let signable_pin = HandoffRecordSignable {
+            pin_salt: Some("K9s8Vz2xR4pL1mQ7jD6wY5bT0fN3cE8oP9gU".to_string()),
+            ..signable.clone()
+        };
+        let pin_json = canonical_json(&signable_pin).expect("canonical_json");
+        println!("Signable with pin_salt: {} bytes", pin_json.len());
+        
+        let record_pin = HandoffRecord {
+            pin_salt: Some("K9s8Vz2xR4pL1mQ7jD6wY5bT0fN3cE8oP9gU".to_string()),
+            signature: typical_sig_b64.to_string(),
+            ..record.clone()
+        };
+        let record_pin_json = serde_json::to_string(&record_pin).expect("serialize record");
+        println!("Full record with pin_salt: {} bytes", record_pin_json.len());
+        
+        println!("\n=== WITH RECIPIENT ===");
+        let signable_rcpt = HandoffRecordSignable {
+            recipient: Some("qjmqtwt9dhfhf3ndtbzj3ddncct1s75kq13wy9ypkf39jzwpw5iy".to_string()),
+            ..signable.clone()
+        };
+        let rcpt_json = canonical_json(&signable_rcpt).expect("canonical_json");
+        println!("Signable with recipient: {} bytes", rcpt_json.len());
+        
+        let record_rcpt = HandoffRecord {
+            recipient: Some("qjmqtwt9dhfhf3ndtbzj3ddncct1s75kq13wy9ypkf39jzwpw5iy".to_string()),
+            signature: typical_sig_b64.to_string(),
+            ..record.clone()
+        };
+        let record_rcpt_json = serde_json::to_string(&record_rcpt).expect("serialize record");
+        println!("Full record with recipient: {} bytes", record_rcpt_json.len());
     }
 }

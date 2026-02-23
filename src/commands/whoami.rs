@@ -12,12 +12,10 @@ pub fn run_whoami() -> anyhow::Result<()> {
     let public_key = keypair.public_key();
     let pubkey_uri = public_key.to_uri_string();
     let fingerprint = keys::fingerprint::short_fingerprint(&public_key);
-    let homeserver = keys::store::read_homeserver()?;
     let key_path = keys::store::secret_key_path()?;
 
     println!("Public Key:  {}", pubkey_uri);
     println!("Fingerprint: {}", fingerprint);
-    println!("Homeserver:  pk:{}", homeserver);
     println!("Key file:    {}", key_path.display());
     println!();
 

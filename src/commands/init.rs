@@ -40,11 +40,7 @@ pub fn run_init(args: InitArgs) -> anyhow::Result<()> {
     store::write_keypair_atomic(&keypair, &secret_key_path)
         .context("Failed to write keypair")?;
 
-    // Step 6: Write homeserver
-    store::write_homeserver(&args.homeserver)
-        .context("Failed to write homeserver")?;
-
-    // Step 7: Success output
+    // Step 6: Success output
     let pub_key = keypair.public_key();
     let success_verb = if action == "generated" {
         "Keypair generated successfully."
@@ -55,8 +51,8 @@ pub fn run_init(args: InitArgs) -> anyhow::Result<()> {
     println!("{}", success_verb);
     println!();
     println!("Public Key:  {}", pub_key.to_uri_string());
-    println!("Homeserver:  pk:{}", args.homeserver);
     println!("Key file:    {}", secret_key_path.display());
+
     println!();
     println!("Next: run 'cclink' to publish your first session handoff.");
 
