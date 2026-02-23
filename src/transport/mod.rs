@@ -1,19 +1,19 @@
-/// Transport module: Pubky homeserver HTTP client with AuthToken authentication.
-///
-/// Implements the binary AuthToken format required by the Pubky homeserver for session
-/// authentication. Uses reqwest::blocking with cookie_store(true) for session persistence
-/// across PUT operations.
-///
-/// AuthToken binary layout (postcard-serialized):
-///   - bytes[0]:      varint length of signature (0x40 = 64, one byte in postcard varint)
-///   - bytes[1..65]:  Ed25519 signature (64 raw bytes)
-///   - bytes[65..75]: namespace b"PUBKY:AUTH" (10 bytes, raw fixed array)
-///   - bytes[75]:     version u8 = 0
-///   - bytes[76..84]: timestamp [u8; 8] big-endian microseconds (postcard fixed array)
-///   - bytes[84..116]: pubkey [u8; 32] (raw fixed array)
-///   - bytes[116..]:  capabilities string (postcard varint length + UTF-8 bytes)
-///
-/// Signable region: bytes[65..] (confirmed from pubky-common-0.5.4/src/auth.rs)
+//! Transport module: Pubky homeserver HTTP client with AuthToken authentication.
+//!
+//! Implements the binary AuthToken format required by the Pubky homeserver for session
+//! authentication. Uses reqwest::blocking with cookie_store(true) for session persistence
+//! across PUT operations.
+//!
+//! AuthToken binary layout (postcard-serialized):
+//!   - bytes[0]:      varint length of signature (0x40 = 64, one byte in postcard varint)
+//!   - bytes[1..65]:  Ed25519 signature (64 raw bytes)
+//!   - bytes[65..75]: namespace b"PUBKY:AUTH" (10 bytes, raw fixed array)
+//!   - bytes[75]:     version u8 = 0
+//!   - bytes[76..84]: timestamp [u8; 8] big-endian microseconds (postcard fixed array)
+//!   - bytes[84..116]: pubkey [u8; 32] (raw fixed array)
+//!   - bytes[116..]:  capabilities string (postcard varint length + UTF-8 bytes)
+//!
+//! Signable region: bytes[65..] (confirmed from pubky-common-0.5.4/src/auth.rs)
 
 use std::cell::Cell;
 use std::time::{Duration, SystemTime};
@@ -447,6 +447,11 @@ impl HomeserverClient {
         }
         let body = response.text()
             .map_err(|e| anyhow::anyhow!("failed to read LIST response: {}", e))?;
+        // Homeserver returns full pubky:// URIs, e.g.:
+        //   pubky://<z32-pubkey>/pub/cclink/1700000000
+        //   pubky://<z32-pubkey>/pub/cclink/latest
+        // Split on "/pub/cclink/" to extract the token portion.
+        // Also handles legacy plain-path format: /pub/cclink/1700000000
         let tokens: Vec<String> = body.lines()
             .filter(|l| !l.is_empty())
             .filter_map(|line| {
@@ -539,6 +544,24 @@ impl HomeserverClient {
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────
+
+/// Extract numeric timestamp tokens from a homeserver directory listing body.
+///
+/// Parses newline-separated lines that may be full pubky:// URIs or plain paths.
+/// Filters out "latest" and any non-numeric keys, and removes trailing slashes.
+/// This mirrors the parsing logic in `list_record_tokens()` and is exposed here
+/// for unit testing.
+#[cfg(test)]
+fn parse_record_tokens(body: &str) -> Vec<String> {
+    body.lines()
+        .filter(|l| !l.is_empty())
+        .filter_map(|line| {
+            line.split("/pub/cclink/").nth(1)
+                .map(|t| t.trim_end_matches('/').to_string())
+        })
+        .filter(|t| t.parse::<u64>().is_ok())
+        .collect()
+}
 
 #[cfg(test)]
 mod tests {
@@ -877,6 +900,64 @@ mod tests {
         // Verify with wrong pubkey must fail
         let result = client.deserialize_and_verify(&json_bytes, &keypair_b.public_key());
         assert!(result.is_err(), "wrong pubkey must cause verification failure");
+    }
+
+    // ── list_record_tokens parsing tests ───────────────────────────────────
+
+    #[test]
+    fn test_parse_record_tokens_full_pubky_uris() {
+        // Homeserver returns full pubky:// URIs; "latest" must be filtered out
+        let body = "pubky://abc123xyz/pub/cclink/1700000000\npubky://abc123xyz/pub/cclink/latest\n";
+        let tokens = parse_record_tokens(body);
+        assert_eq!(tokens, vec!["1700000000"]);
+    }
+
+    #[test]
+    fn test_parse_record_tokens_plain_paths() {
+        // Legacy plain-path format also parses correctly
+        let body = "/pub/cclink/1700000000\n/pub/cclink/latest\n";
+        let tokens = parse_record_tokens(body);
+        assert_eq!(tokens, vec!["1700000000"]);
+    }
+
+    #[test]
+    fn test_parse_record_tokens_mixed_formats() {
+        // Mixed pubky:// and plain-path entries in same listing
+        let body = "pubky://abc123xyz/pub/cclink/1700000000\n/pub/cclink/1700000001\n";
+        let mut tokens = parse_record_tokens(body);
+        tokens.sort();
+        assert_eq!(tokens, vec!["1700000000", "1700000001"]);
+    }
+
+    #[test]
+    fn test_parse_record_tokens_empty_body() {
+        // Empty body returns empty vec
+        let tokens = parse_record_tokens("");
+        assert!(tokens.is_empty(), "empty body should yield no tokens");
+    }
+
+    #[test]
+    fn test_parse_record_tokens_only_latest() {
+        // Body with only "latest" pointer yields no numeric tokens
+        let body = "pubky://abc123xyz/pub/cclink/latest\n";
+        let tokens = parse_record_tokens(body);
+        assert!(tokens.is_empty(), "only 'latest' should yield no tokens");
+    }
+
+    #[test]
+    fn test_parse_record_tokens_trailing_slash() {
+        // Trailing slashes on token paths are stripped
+        let body = "pubky://abc123xyz/pub/cclink/1700000000/\n";
+        let tokens = parse_record_tokens(body);
+        assert_eq!(tokens, vec!["1700000000"]);
+    }
+
+    #[test]
+    fn test_parse_record_tokens_multiple_numeric() {
+        // Multiple numeric tokens returned in listing order
+        let body = "pubky://abc123xyz/pub/cclink/1700000001\npubky://abc123xyz/pub/cclink/1700000002\npubky://abc123xyz/pub/cclink/latest\n";
+        let tokens = parse_record_tokens(body);
+        assert_eq!(tokens, vec!["1700000001", "1700000002"]);
     }
 
     /// Integration test requiring a live Pubky homeserver.
