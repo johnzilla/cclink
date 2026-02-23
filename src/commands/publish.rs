@@ -140,7 +140,7 @@ pub fn run_publish(cli: &crate::cli::Cli) -> anyhow::Result<()> {
     };
 
     // ── 6. Publish to homeserver ──────────────────────────────────────────
-    let client = crate::transport::HomeserverClient::new(&homeserver)?;
+    let client = crate::transport::HomeserverClient::new(&homeserver, &keypair.public_key().to_z32())?;
     let token = client.publish(&keypair, &record)?;
 
     // ── 7. Output success ─────────────────────────────────────────────────

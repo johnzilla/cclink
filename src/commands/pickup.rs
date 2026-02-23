@@ -48,7 +48,7 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
     // ── 1. Load keypair and homeserver ────────────────────────────────────
     let keypair = crate::keys::store::load_keypair()?;
     let homeserver = crate::keys::store::read_homeserver()?;
-    let client = crate::transport::HomeserverClient::new(&homeserver)?;
+    let client = crate::transport::HomeserverClient::new(&homeserver, &keypair.public_key().to_z32())?;
 
     // ── 2. Retrieve record with retry/backoff (RET-06) ────────────────────
     let backoff_config = ExponentialBackoff {

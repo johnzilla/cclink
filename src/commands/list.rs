@@ -14,7 +14,7 @@ pub fn run_list() -> anyhow::Result<()> {
     // ── 1. Load keypair and homeserver ────────────────────────────────────
     let keypair = crate::keys::store::load_keypair()?;
     let homeserver = crate::keys::store::read_homeserver()?;
-    let client = crate::transport::HomeserverClient::new(&homeserver)?;
+    let client = crate::transport::HomeserverClient::new(&homeserver, &keypair.public_key().to_z32())?;
 
     // ── 2. Sign in (lazy — will only POST /session once per client) ──────
     client.signin(&keypair)?;
