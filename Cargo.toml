@@ -16,6 +16,8 @@ path = "src/main.rs"
 
 [dependencies]
 pkarr = { version = "5.0.3", default-features = false, features = ["dht"] }
+# pkarr 5.0.3 requires ed25519-dalek 3.x pre-release; no stable 3.x exists yet.
+# This exact pin must remain until pkarr publishes a release depending on a stable ed25519-dalek 3.x.
 ed25519-dalek = "=3.0.0-pre.5"
 clap = { version = "4.5", features = ["derive"] }
 anyhow = "1.0"

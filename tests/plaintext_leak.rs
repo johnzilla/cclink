@@ -1,11 +1,11 @@
-/// Plaintext leak detection tests.
-///
-/// Verify that encrypted blobs and HandoffRecord JSON never contain sensitive
-/// metadata (session ID, hostname, project path) in any readable form — neither
-/// as raw bytes nor as a base64-encoded string.
-///
-/// These tests guard against regression where a refactor accidentally stores
-/// or transmits plaintext session data alongside the ciphertext.
+//! Plaintext leak detection tests.
+//!
+//! Verify that encrypted blobs and HandoffRecord JSON never contain sensitive
+//! metadata (session ID, hostname, project path) in any readable form — neither
+//! as raw bytes nor as a base64-encoded string.
+//!
+//! These tests guard against regression where a refactor accidentally stores
+//! or transmits plaintext session data alongside the ciphertext.
 
 use base64::Engine;
 use cclink::crypto::{age_encrypt, age_recipient, ed25519_to_x25519_public};

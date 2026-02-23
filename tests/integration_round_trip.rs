@@ -1,15 +1,15 @@
-/// Integration tests: encryption round-trip for all four code paths, plus v1.1
-/// tamper detection for burn and recipient fields.
-///
-/// Tests cover:
-///   1. Self-encrypt  — own key encrypts, own key decrypts
-///   2. Shared-encrypt — recipient's key encrypts, recipient's key decrypts; sender cannot decrypt
-///   3. Burn round-trip — burn flag is in signed envelope; crypto path is identical to self-encrypt
-///   4. Shared+burn    — combines shared encrypt + burn flag; recipient decrypts; sender cannot
-///   5. Signed burn tamper detection — tamping burn after signing causes verify_record to fail
-///   6. Signed recipient tamper detection — tampering recipient after signing causes verify_record to fail
-///
-/// All tests are `#[test]` (not `#[tokio::test]`) — no async, no network access.
+//! Integration tests: encryption round-trip for all four code paths, plus v1.1
+//! tamper detection for burn and recipient fields.
+//!
+//! Tests cover:
+//!   1. Self-encrypt  — own key encrypts, own key decrypts
+//!   2. Shared-encrypt — recipient's key encrypts, recipient's key decrypts; sender cannot decrypt
+//!   3. Burn round-trip — burn flag is in signed envelope; crypto path is identical to self-encrypt
+//!   4. Shared+burn    — combines shared encrypt + burn flag; recipient decrypts; sender cannot
+//!   5. Signed burn tamper detection — tamping burn after signing causes verify_record to fail
+//!   6. Signed recipient tamper detection — tampering recipient after signing causes verify_record to fail
+//!
+//! All tests are `#[test]` (not `#[tokio::test]`) — no async, no network access.
 
 use cclink::crypto::{
     age_decrypt, age_encrypt, age_identity, age_recipient, ed25519_to_x25519_public,
