@@ -1,118 +1,198 @@
 # Stack Research
 
-**Domain:** Rust CLI — Ed25519/PKARR identity, Pubky homeserver, age encryption, QR codes, terminal UX
-**Researched:** 2026-02-21
-**Confidence:** HIGH (core stack verified via official docs and docs.rs; Pubky SDK verified at v0.6.0 released 2026-01-15)
+**Domain:** Rust CLI — Dependency audit, CI hardening, ed25519-dalek pre-release management
+**Researched:** 2026-02-23
+**Confidence:** HIGH (pkarr dependency tree verified live via crates.io API; cargo audit run live against the project; CI action versions verified via GitHub)
+
+---
+
+## Context: What This Research Covers
+
+This is a **subsequent milestone** research pass. The core stack (pkarr, age, clap, argon2, etc.) is validated and unchanged. This file covers only what is needed for the v1.2 milestone:
+
+1. Whether ed25519-dalek can be upgraded from `=3.0.0-pre.5` to a stable or newer release
+2. What GitHub Action to use for `cargo audit` in CI
+3. How to add `cargo clippy` to CI correctly
+4. The `backoff` unmaintained advisory and its resolution
 
 ---
 
 ## Recommended Stack
 
-### Core Technologies
+### Core Technologies (unchanged from v1.1)
 
 | Technology | Version | Purpose | Why Recommended |
 |------------|---------|---------|-----------------|
-| `pubky` | 0.6.0 | Pubky homeserver client, PKARR identity, session auth | The official Rust SDK from the pubky-core project. Provides `Pubky` facade, `PubkySigner` for homeserver signup/signin, `SessionStorage` for authenticated PUT/GET/DELETE, and `Pkdns` for publishing/resolving `_pubky` DNS records. This is the only correct choice — there is no alternative for the Pubky protocol. |
-| `pkarr` | 5.0.3 | Ed25519 keypair generation and management | `pkarr::Keypair` is the canonical key type for the Pubky ecosystem: `Keypair::random()`, `Keypair::from_secret_key()`, `write_secret_key_file()`, `to_z32()`. The pubky crate depends on it. Provides both blocking and async APIs. |
-| `age` | 0.11.2 | File/payload encryption | The Rust implementation of the age-encryption.org/v1 spec. Native x25519 recipients via `x25519::Recipient` and `x25519::Identity`. Still pre-1.0 (beta) but widely used and matches the PROJECT.md constraint. Rage CLI and reference Go implementation use the same wire format. |
-| `clap` | 4.5.60 | CLI argument parsing and subcommand dispatch | The de facto standard. Version 4 derive macros make subcommand definitions clean. Handles help generation, error suggestions, shell completions. Used by pubky-cli itself. |
-| `tokio` | 1.49.0 | Async runtime | Required by the pubky SDK, which is async throughout. Multi-threaded scheduler handles homeserver HTTP calls without blocking. Standard choice for async Rust. |
+| `pkarr` | 5.0.3 | Mainline DHT transport, Ed25519 SignedPackets | Locked. Do not change — v1.2 scope excludes transport changes. |
+| `ed25519-dalek` | `=3.0.0-pre.5` → `=3.0.0-pre.6` | Ed25519 signing (pulled in by pkarr) | See version analysis below. Update pin from pre.5 to pre.6. |
+| `age` | 0.11.x | X25519 encryption | Unchanged. |
+| `argon2` | 0.5 | Argon2id for PIN hashing | Unchanged. |
 
-### Cryptographic Stack
+### CI Tooling (new for v1.2)
 
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| `ssh-to-age` | 0.2.0 | Ed25519-to-X25519 key conversion | Converting a pkarr Ed25519 keypair to an age-compatible X25519 identity for self-encryption. This is the only Rust-native library solving this conversion; released June 2025. Use when building the `age::x25519::Identity` from the PKARR secret key. |
-| `hkdf` | 0.12.4 | HKDF key derivation (PIN mode) | Deriving a symmetric encryption key from a 4-digit PIN plus the public key as salt. Required for `--pin` flag functionality. RustCrypto crate, pairs with `sha2`. |
-| `sha2` | 0.10.9 | SHA-256 for HKDF | Feed into `hkdf` as the PRF. Also useful for generating the session token hash for the `latest.json` pointer. |
-| `zeroize` | 1.8.2 | Zeroing secret key bytes from memory | Prevents compiler-optimized-away memory clears on sensitive data. Critical for Ed25519 secret key handling. Use `Zeroize` derive on any struct holding key material. |
-| `curve25519-dalek` | 4.1.3 | Low-level curve operations | Only if needing direct Montgomery-form conversion not covered by ssh-to-age. Likely not needed directly — ssh-to-age wraps this. |
-
-### Terminal UX
-
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| `qr2term` | 0.3.3 | Terminal QR code rendering | One-line API: `qr2term::print_qr(url)?`. Depends on crossterm and qrcode internally. Use after successful publish and on pickup. PURPOSE-BUILT for terminal QR — do not use the lower-level `qrcode` crate directly. |
-| `indicatif` | 0.18.4 | Progress bars and spinners | Use for homeserver HTTP operations (signup, PUT, GET). Shows activity during network calls. Thread-safe, Tokio-compatible. |
-| `console` | 0.16.2 | Colored output and terminal detection | Base layer for styled output (`style("OK").green().bold()`). Automatically disables color when output is piped. Required by indicatif and dialoguer — add it directly for status line formatting. |
-| `dialoguer` | 0.12.0 | Interactive prompts | Use for PIN entry (`Password` prompt), and `--exec` confirmation. Pairs with console. |
-
-### Serialization and Storage
-
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| `serde` | 1.0.228 | Serialization framework | Required for handoff payload JSON. Enable `derive` feature on all data structs. |
-| `serde_json` | 1.0.149 | JSON encoding/decoding | Handoff records are JSON published to `/pub/cclink/sessions/<token>.json` and `latest.json`. Standard choice. |
-| `dirs` | 6.0.0 | Platform-aware home/config paths | Finding `~/.cclink/keys` and `~/.claude/sessions/` correctly across Linux/macOS/Windows. Follows XDG on Linux. Use `dirs::home_dir()`. |
-
-### Error Handling
-
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| `anyhow` | 1.0.102 | Application-level error propagation | Use in `main()` and command handlers: `anyhow::Result<()>`. Context attachment with `.context("...")` produces useful CLI error messages. Standard for binary crates. |
-| `thiserror` | 2.0.18 | Typed domain errors | Define `CclinkError` enum for categorized errors (keypair not found, homeserver unreachable, decryption failed). Use in internal modules. Combine with anyhow at the boundary: `thiserror` inside, `anyhow` at command level. |
-
-### Development Tools
-
-| Tool | Purpose | Notes |
-|------|---------|-------|
-| `cargo-dist` | Binary release automation | v0.30.0 (Sept 2025). Produces cross-platform GitHub release artifacts. Handles macOS/Linux/Windows targets. Add to `Cargo.toml` workspace metadata. |
-| `cross` | Cross-compilation | `cross build --target=x86_64-unknown-linux-musl --release` for portable Linux binaries. Docker-based. Use instead of manual musl toolchain setup. |
-| `cargo-release` | Crate version bumping | Bump version, tag, push. Integrates with cargo-dist release flow. |
+| Tool | Version/Tag | Purpose | Why Recommended |
+|------|-------------|---------|-----------------|
+| `actions-rust-lang/audit` | `v1` (v1.2.7, Jan 2026) | Cargo audit in CI — runs cargo-audit against RustSec advisory DB | The current standard. Actively maintained, creates GitHub issues for vulnerabilities, has configurable ignore list. Supersedes the older `rustsec/audit-check` action. |
+| `cargo clippy` | Bundled with `dtolnay/rust-toolchain@stable` | Lint enforcement | Clippy is pre-installed on GitHub runners with the rust-toolchain action. No separate action needed — run directly with `cargo clippy -- -D warnings`. |
+| `cargo-deny` | Alternative to cargo-audit | Combined license + advisory checking | Not recommended for this project — cargo-audit is simpler and the project has no license complexity. |
 
 ---
 
-## Installation
+## The ed25519-dalek Constraint: What Can Be Changed
+
+### The Hard Constraint
+
+**pkarr 5.0.3 requires `ed25519-dalek = "^3.0.0-pre.1"`.**
+
+This was verified live from the crates.io dependency API. The `^` operator applied to a pre-release version in Cargo semver means: "compatible with 3.0.0-pre.1, at minimum." In practice, Cargo resolves this to the highest available `3.0.0-pre.x` that satisfies the constraint.
+
+**Implication: stable ed25519-dalek 2.2.0 cannot be used.** pkarr 5.0.3 will not resolve against it because `2.x` is a different major version and predates the `3.0.0-pre.1` minimum.
+
+### Why There Is No Stable 3.x
+
+As of 2026-02-23, ed25519-dalek has no stable 3.0.0 release. The 3.x series is entirely pre-release. The latest pre-release is `3.0.0-pre.6` (released 2026-02-04). The latest stable is `2.2.0` (released 2025-07-09).
+
+The project is actively moving toward stable 3.0 — recent pre-releases (pre.3 through pre.6) only updated `rand_core`, `digest`, and `sha2` dependencies, indicating the API is stabilizing.
+
+### Current vs Upgradeable
+
+| Version | Status | Pkarr Compatible | Notes |
+|---------|--------|-----------------|-------|
+| `2.2.0` | Stable | NO | Different major; pkarr requires `^3.0.0-pre.1` |
+| `3.0.0-pre.5` | Pre-release | YES | Current pin in Cargo.toml |
+| `3.0.0-pre.6` | Pre-release | YES | Latest; released 2026-02-04 |
+| `3.0.0` | Does not exist yet | — | No ETA |
+
+### Recommendation: Upgrade Pin to 3.0.0-pre.6
+
+Change Cargo.toml from:
+```toml
+ed25519-dalek = "=3.0.0-pre.5"
+```
+to:
+```toml
+ed25519-dalek = "=3.0.0-pre.6"
+```
+
+This is a routine dependency bump within the same API surface. pre.4 through pre.6 only changed downstream crate versions (rand_core, digest, sha2); no API breaks were introduced between pre.5 and pre.6.
+
+**Do not remove the `=` exact pin.** Without it, Cargo resolves pre-releases non-deterministically and `cargo update` may silently pick a new pre-release that breaks the build. The exact pin is correct practice for pre-releases.
+
+**Note:** `cargo update --dry-run --verbose` confirms that Cargo cannot update ed25519-dalek beyond pre.5 under the current `=` pin, and confirms pre.6 is available. The update from pre.5 to pre.6 requires a manual Cargo.toml edit.
+
+### What Changes in 3.0.0-pre vs 2.x API
+
+The major API break happened at 2.0.0 (already adopted). The 3.0.0-pre.0 changes are:
+- Edition upgraded to 2024, MSRV raised to 1.85
+- `std` feature removed
+- `pkcs8::spki::SignatureAlgorithmIdentifier` replaces `DynSignatureAlgorithmIdentifier`
+- `ed25519` and `signature` dependency versions updated
+
+These are not relevant to cclink, which uses `pkarr::Keypair` as its key type and never calls ed25519-dalek's API directly. The pkarr crate handles all ed25519-dalek interactions internally.
+
+---
+
+## Cargo Audit CI Integration
+
+### Current Audit Status (verified live)
+
+Running `cargo audit` against the current lockfile produces:
+
+```
+Warning: backoff 0.4.0 — RUSTSEC-2025-0012 (unmaintained)
+Warning: instant 0.1.13 — RUSTSEC-2024-0384 (unmaintained)
+```
+
+No vulnerabilities (security errors). Two warnings for unmaintained crates. Both are transitive — `instant` is a transitive dependency of `backoff`.
+
+**`backoff` is a direct dependency** and causes both advisories. The fix is replacing `backoff` with `backon` (see below).
+
+### Recommended GitHub Action
+
+Use `actions-rust-lang/audit@v1` (latest tag: v1.2.7, released January 2026).
+
+```yaml
+- name: Audit Rust dependencies
+  uses: actions-rust-lang/audit@v1
+  with:
+    ignore: ""  # leave empty unless a known-safe advisory needs ignoring
+```
+
+**Why this action over `rustsec/audit-check@v2`:**
+- `actions-rust-lang/audit` is newer (v1.2.7, Jan 2026 vs v2.0.0, Sep 2024)
+- Creates GitHub issues for found vulnerabilities automatically (configurable)
+- Does not require a separate `GITHUB_TOKEN` parameter — defaults to the workflow token
+- Handles the advisory DB fetch internally
+
+### Recommended Workflow Additions to ci.yml
+
+Add two new jobs alongside the existing `test` job:
+
+```yaml
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/audit@v1
+
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --all-targets -- -D warnings
+```
+
+**Why separate jobs:** Audit and clippy failures are independent concerns. Parallel jobs report faster and give clearer failure attribution than a single long job.
+
+**Why `RUSTFLAGS: "-Dwarnings"` is not used:** The official Clippy docs recommend passing `-D warnings` directly to the clippy invocation (`-- -D warnings`) rather than via `RUSTFLAGS`. The `RUSTFLAGS` approach also affects `rustc` itself, which can cause false failures from compiler warnings unrelated to clippy lints.
+
+**Clippy components:** The `dtolnay/rust-toolchain@stable` action supports `components: clippy` to ensure clippy is installed even if the runner image doesn't have it. This prevents silent skips.
+
+---
+
+## The backoff Advisory: What to Do
+
+### Advisory Details
+
+- **RUSTSEC-2025-0012**: `backoff` 0.4.0 is unmaintained (issued 2025-03-04)
+- **RUSTSEC-2024-0384**: `instant` 0.1.13 is unmaintained (transitive dep of backoff)
+
+Both are warnings, not vulnerabilities. `cargo audit` exits 0 with these. However, they will generate noise in CI and may escalate if `actions-rust-lang/audit` is configured with `denyWarnings: true`.
+
+### How backoff Is Used
+
+```rust
+// src/commands/pickup.rs
+use backoff::{retry, ExponentialBackoff, Error as BackoffError};
+let backoff_config = ExponentialBackoff {
+    max_elapsed_time: Some(Duration::from_secs(30)),
+    max_interval: Duration::from_secs(8),
+    initial_interval: Duration::from_secs(2),
+    ..Default::default()
+};
+let record = retry(backoff_config, || { ... });
+```
+
+Simple retry loop with exponential backoff. No async, no tokio integration.
+
+### Recommended Replacement: backon 1.6.0
+
+`backon` (v1.6.0, released 2025-10-18) is the standard maintained alternative. It is actively maintained, has no `instant` dependency, and supports both sync and async retry.
+
+**Migration approach:** Replace the `backoff::retry()` call with `backon`'s closure-based retry builder. The API differs (backon uses a builder pattern: `.retry(ExponentialBuilder::default())`), but the logic is equivalent.
+
+**Alternative — ignore the advisory:** If replacing `backoff` is out of scope for v1.2, add a `.cargo/audit.toml` to suppress the two warnings:
 
 ```toml
-[package]
-name = "cclink"
-version = "0.1.0"
-edition = "2021"
-
-[[bin]]
-name = "cclink"
-path = "src/main.rs"
-
-[dependencies]
-# Pubky protocol
-pubky = "0.6.0"
-pkarr = "5.0.3"
-
-# Encryption
-age = { version = "0.11.2", features = ["x25519"] }
-ssh-to-age = "0.2.0"
-hkdf = "0.12.4"
-sha2 = "0.10.9"
-zeroize = { version = "1.8.2", features = ["derive"] }
-
-# CLI
-clap = { version = "4.5.60", features = ["derive"] }
-tokio = { version = "1.49.0", features = ["full"] }
-
-# Terminal UX
-qr2term = "0.3.3"
-indicatif = "0.18.4"
-console = "0.16.2"
-dialoguer = "0.12.0"
-
-# Serialization
-serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.149"
-
-# Filesystem / paths
-dirs = "6.0.0"
-
-# Error handling
-anyhow = "1.0.102"
-thiserror = "2.0.18"
-
-[profile.release]
-opt-level = 3
-lto = true
-codegen-units = 1
-strip = true
+[advisories]
+ignore = ["RUSTSEC-2025-0012", "RUSTSEC-2024-0384"]
 ```
+
+This is appropriate if the CI gate should pass cleanly now and `backoff` replacement is deferred to v1.3. The unmaintained status poses no security risk — it means no future patches, not that it is currently broken or exploitable.
 
 ---
 
@@ -120,54 +200,23 @@ strip = true
 
 | Recommended | Alternative | When to Use Alternative |
 |-------------|-------------|-------------------------|
-| `pubky` 0.6.0 | Direct HTTP via `reqwest` | Never — the pubky SDK handles auth header signing, session management, PKDNS resolution, and retry logic. Rolling this by hand is a significant implementation risk for a peripheral concern. |
-| `pkarr::Keypair` | `ed25519-dalek` directly | Never for this project — pkarr::Keypair IS the identity type the pubky SDK expects. Using ed25519-dalek directly would require conversion shims that might not be correct. |
-| `age` crate | `sodiumoxide` / `libsodium` | Only if needing NaCl box semantics specifically. age has a simpler API, is well-audited, and the wire format is stable and interoperable. |
-| `ssh-to-age` | Manual Ed25519→X25519 conversion via curve25519-dalek | Only if you need to avoid the dependency. ssh-to-age is small and correct; manual conversion is where bugs hide. |
-| `qr2term` | `qrcode` (lower-level) | `qrcode` if you need image output. For terminal-only, `qr2term` is one line with no rendering plumbing required. |
-| `anyhow` + `thiserror` | `eyre` | `eyre` is a `anyhow` fork with better error reporting hooks (color-eyre). Use it if you want prettier backtraces; otherwise anyhow is simpler. |
-| `tokio` | `async-std` | `async-std` has lower adoption and the pubky SDK likely assumes tokio. Do not mix runtimes. |
-| `cargo-dist` | Manual GitHub Actions matrix | cargo-dist is significantly less boilerplate for multi-platform binary releases. The only reason to skip it is if you need tight control over the CI pipeline for other reasons. |
+| `actions-rust-lang/audit@v1` | `rustsec/audit-check@v2` | Use `audit-check@v2` if you specifically need GitHub check annotation styling rather than issue creation. Both work; `actions-rust-lang/audit` is more recently maintained. |
+| `cargo clippy -- -D warnings` | `RUSTFLAGS="-Dwarnings" cargo clippy` | Use `RUSTFLAGS` only if you also want to deny rustc compiler warnings at the same time. For clippy-only enforcement, pass `-D warnings` to clippy directly. |
+| `backon` 1.6.0 | Ignore RUSTSEC-2025-0012 | Ignore the advisory if the v1.2 scope is tightly constrained. The advisory is "unmaintained," not a security CVE. |
+| `=3.0.0-pre.6` exact pin | Loose `^3.0.0-pre.1` | Loose pin only when you trust all pre-release bumps in the series to be non-breaking. For crypto crates at pre-release, exact pinning is safer. |
 
 ---
 
-## What NOT to Use
+## What NOT to Change
 
-| Avoid | Why | Use Instead |
-|-------|-----|-------------|
-| `reqwest` directly for homeserver calls | The pubky SDK wraps HTTP with auth signing and PKDNS resolution. Bypassing it means re-implementing the auth protocol, which changes with SDK updates. | `pubky::Pubky` / `SessionStorage` |
-| `sodiumoxide` / `libsodium` bindings | C FFI dependency breaks musl static builds; age is pure Rust and covers this use case. | `age` + `ssh-to-age` |
-| `openssl` (system) | Breaks static binary builds; TLS needs work on musl. | `rustls` (pulled in transitively by pubky/reqwest via `rustls-tls` feature) |
-| `structopt` | Deprecated; merged into clap v3+ derive. Old tutorials still reference it. | `clap` 4.x with `derive` feature |
-| `ratatui` | Full TUI framework; major overkill for status output in a CLI that doesn't need interactive rendering. | `indicatif` + `console` for progress/color |
-| `keyring` (system keychain) | Extra dependency and system integration complexity for v1. The PROJECT.md spec is `~/.cclink/keys` with 0600 permissions. | File-based key storage with `0o600` permission set via `std::fs` |
-| Async-only `age` streaming API | Adds complexity for payloads that fit in memory (session IDs are tiny). | Synchronous `age` encrypt/decrypt for in-memory buffers |
-
----
-
-## Stack Patterns by Variant
-
-**For self-encryption (default handoff):**
-- Use `ssh-to-age` to derive `age::x25519::Identity` from the pkarr secret key
-- Encrypt the session ID payload to the corresponding `x25519::Recipient`
-- The same keypair encrypts and decrypts — no key sharing needed
-
-**For share-mode (`--share <pubkey>`):**
-- Derive recipient's `age::x25519::Recipient` from their PKARR public key (same conversion via ssh-to-age public key path)
-- Encrypt only to recipient; sender cannot decrypt
-
-**For PIN-protected (`--pin`):**
-- Use `hkdf` with SHA-256: IKM = PIN bytes, salt = public key bytes, info = `b"cclink-pin-v1"`
-- Derive 32-byte key → use as `age::x25519::Identity` seed (or as `age::scrypt` passphrase input)
-- Document: LOW security, convenience only — 4 digits = 10,000 possibilities
-
-**For static Linux binary (CI):**
-```bash
-rustup target add x86_64-unknown-linux-musl
-cargo install cross
-cross build --target x86_64-unknown-linux-musl --release
-```
-Ensure all deps support musl — pubky pulls in `rustls` which is pure Rust. Avoid any `openssl` feature flags.
+| Do Not Change | Why |
+|---------------|-----|
+| `pkarr = "5.0.3"` | Stable, tested transport layer. v1.2 scope excludes transport changes. |
+| `age = "0.11"` | Unchanged encryption layer. No advisories. |
+| `argon2 = "0.5"` | PIN hashing. No advisories. |
+| `ed25519-dalek` to stable `2.2.0` | Impossible — pkarr 5.0.3 requires `^3.0.0-pre.1`. |
+| Existing `test` job in ci.yml | Add new jobs; do not modify the passing test job. |
+| `--locked` flag on `cargo test` | The lockfile must remain authoritative. Do not remove `--locked`. |
 
 ---
 
@@ -175,39 +224,27 @@ Ensure all deps support musl — pubky pulls in `rustls` which is pure Rust. Avo
 
 | Package | Compatible With | Notes |
 |---------|-----------------|-------|
-| `pubky@0.6.0` | `pkarr@5.0.3` | pubky-core repo released together 2026-01-15; use matching versions |
-| `age@0.11.2` | `ssh-to-age@0.2.0` | ssh-to-age targets age 0.11.x; verify before bumping age |
-| `clap@4.5.x` | `indicatif@0.18.x` | No conflict; independent |
-| `tokio@1.49.0` | `pubky@0.6.0` | pubky SDK requires tokio; use `features = ["full"]` or at minimum `["rt-multi-thread", "macros"]` |
-| `zeroize@1.8.x` | `pkarr@5.0.3`, `age@0.11.x` | RustCrypto crates all use zeroize 1.x; single version in lockfile |
+| `pkarr@5.0.3` | `ed25519-dalek@^3.0.0-pre.1` | Verified via crates.io API. pre.5 and pre.6 both satisfy this constraint. |
+| `ed25519-dalek@3.0.0-pre.6` | `curve25519-dalek@5.0.0-pre.6` | pre.6 bumps curve25519-dalek from pre.5 to pre.6. No user-visible API change. |
+| `actions-rust-lang/audit@v1` | Any Rust project with Cargo.lock | No Rust toolchain installation needed; action handles it internally. |
+| `backon@1.6.0` | Rust stable, no-std compatible | Does not depend on `instant`; no async runtime required for sync retry. |
 
 ---
 
 ## Sources
 
-- `docs.rs/pubky/0.6.0/pubky/` — SDK APIs, signup/signin/storage methods (HIGH confidence)
-- `github.com/pubky/pubky-core` — pubky-core v0.6.0 released 2026-01-15, confirmed (HIGH confidence)
-- `docs.pubky.org/Explore/PubkyCore/API` — PUT/GET/DELETE paths, auth header format (HIGH confidence)
-- `docs.rs/pkarr/latest/pkarr/struct.Keypair.html` — Keypair API (HIGH confidence)
-- `docs.rs/age/latest/age/` — age 0.11.2, x25519 encryption (HIGH confidence)
-- `lib.rs/crates/ssh-to-age` — ssh-to-age 0.2.0 released June 2025, Ed25519→X25519 (HIGH confidence)
-- `docs.rs/clap/latest/clap/` — clap 4.5.60 (HIGH confidence)
-- `docs.rs/tokio/latest/tokio/` — tokio 1.49.0 (HIGH confidence)
-- `docs.rs/qr2term/latest/qr2term/` — qr2term 0.3.3 (HIGH confidence)
-- `docs.rs/indicatif/latest/indicatif/` — indicatif 0.18.4 (HIGH confidence)
-- `docs.rs/console/latest/console/` — console 0.16.2 (HIGH confidence)
-- `docs.rs/dialoguer/latest/dialoguer/` — dialoguer 0.12.0 (HIGH confidence)
-- `docs.rs/hkdf/latest/hkdf/` — hkdf 0.12.4 (HIGH confidence)
-- `docs.rs/sha2/latest/sha2/` — sha2 0.10.9 (HIGH confidence)
-- `docs.rs/zeroize/latest/zeroize/` — zeroize 1.8.2 (HIGH confidence)
-- `docs.rs/anyhow/latest/anyhow/` — anyhow 1.0.102 (HIGH confidence)
-- `docs.rs/thiserror/latest/thiserror/` — thiserror 2.0.18 (HIGH confidence)
-- `docs.rs/serde/latest/serde/` — serde 1.0.228 (HIGH confidence)
-- `docs.rs/serde_json/latest/serde_json/` — serde_json 1.0.149 (HIGH confidence)
-- `docs.rs/dirs/latest/dirs/` — dirs 6.0.0 (HIGH confidence)
-- `github.com/axodotdev/cargo-dist` — cargo-dist v0.30.0 released Sept 2025 (MEDIUM confidence; from WebSearch)
-- WebSearch: musl static binary best practices 2025 (MEDIUM confidence)
+- `crates.io/api/v1/crates/pkarr/5.0.3/dependencies` — pkarr 5.0.3 requires `ed25519-dalek ^3.0.0-pre.1` (HIGH confidence, verified live)
+- `crates.io/api/v1/crates/pkarr` — Latest pkarr is 6.0.0-rc.0; stable is 5.0.3 (HIGH confidence, verified live)
+- `crates.io/api/v1/crates/ed25519-dalek` — Latest stable 2.2.0 (Jul 2025); latest pre-release 3.0.0-pre.6 (Feb 2026) (HIGH confidence, verified live)
+- `cargo audit` run live in project — two unmaintained warnings (backoff, instant), zero vulnerabilities (HIGH confidence)
+- `github.com/actions-rust-lang/audit` — v1.2.7, January 2026. Recommended workflow YAML verified (HIGH confidence)
+- `github.com/rustsec/audit-check` — v2.0.0, September 2024. Still maintained but older (HIGH confidence)
+- `doc.rust-lang.org/nightly/clippy/continuous_integration/github_actions.html` — Official Clippy CI recommendation: `cargo clippy --all-targets --all-features` with `-Dwarnings` (HIGH confidence)
+- `crates.io/api/v1/crates/backon` — backon 1.6.0, released 2025-10-18 (HIGH confidence, verified live)
+- `rustsec.org/advisories/RUSTSEC-2025-0012` — backoff unmaintained advisory, issued 2025-03-04 (HIGH confidence)
+- `rustsec.org/advisories/RUSTSEC-2024-0384` — instant unmaintained advisory (HIGH confidence)
+- `cargo update ed25519-dalek --dry-run --verbose` run live — confirms pre.6 is available, current pin blocks the update (HIGH confidence)
 
 ---
-*Stack research for: Rust CLI — cclink (PKARR identity, Pubky homeserver, age encryption)*
-*Researched: 2026-02-21*
+*Stack research for: cclink v1.2 — dependency audit and CI hardening*
+*Researched: 2026-02-23*
