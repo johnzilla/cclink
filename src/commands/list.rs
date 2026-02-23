@@ -66,8 +66,8 @@ pub fn run_list() -> anyhow::Result<()> {
         table.add_row(vec![
             Cell::new(token_display),
             Cell::new(&record.project),
-            Cell::new(&human_duration(age_secs)),
-            Cell::new(&human_duration(ttl_left)),
+            Cell::new(human_duration(age_secs)),
+            Cell::new(human_duration(ttl_left)),
             if record.burn {
                 Cell::new(burn_display).fg(Color::Yellow)
             } else {

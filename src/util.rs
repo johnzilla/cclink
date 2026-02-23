@@ -1,4 +1,4 @@
-/// Shared utility functions.
+//! Shared utility functions.
 
 /// Convert a duration in seconds to a human-readable string.
 ///

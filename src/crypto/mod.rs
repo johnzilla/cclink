@@ -1,9 +1,9 @@
-/// Crypto module: Ed25519-to-X25519 key derivation and age encryption/decryption.
-///
-/// All functions convert between pkarr's Ed25519 keypairs and the X25519 keys
-/// needed by the age encryption format. Key boundaries are always raw [u8; 32]
-/// bytes to avoid type conflicts between curve25519-dalek 4 (age) and
-/// curve25519-dalek 5 (pkarr).
+//! Crypto module: Ed25519-to-X25519 key derivation and age encryption/decryption.
+//!
+//! All functions convert between pkarr's Ed25519 keypairs and the X25519 keys
+//! needed by the age encryption format. Key boundaries are always raw [u8; 32]
+//! bytes to avoid type conflicts between curve25519-dalek 4 (age) and
+//! curve25519-dalek 5 (pkarr).
 
 use argon2::{Argon2, Algorithm, Version, Params};
 use bech32::{ToBase32, Variant};

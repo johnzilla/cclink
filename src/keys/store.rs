@@ -38,7 +38,7 @@ pub fn write_keypair_atomic(keypair: &pkarr::Keypair, dest: &Path) -> anyhow::Re
 
     keypair
         .write_secret_key_file(&tmp)
-        .map_err(|e| CclinkError::AtomicWriteFailed(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+        .map_err(|e| CclinkError::AtomicWriteFailed(std::io::Error::other(e.to_string())))?;
 
     if let Err(e) = std::fs::rename(&tmp, dest) {
         // Attempt cleanup of temp file on rename failure

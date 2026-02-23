@@ -184,7 +184,7 @@ pub fn run_publish(cli: &crate::cli::Cli) -> anyhow::Result<()> {
     // ── 8. Optional QR code ───────────────────────────────────────────────
     if cli.qr {
         println!();
-        qr2term::print_qr(&format!("cclink pickup {}", token))
+        qr2term::print_qr(format!("cclink pickup {}", token))
             .map_err(|e| anyhow::anyhow!("QR code render failed: {}", e))?;
     }
 

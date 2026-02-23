@@ -1,9 +1,9 @@
-/// Record module: HandoffRecord struct with canonical JSON serialization and Ed25519 signing.
-///
-/// HandoffRecord stores all metadata for a session handoff: hostname, project path,
-/// timestamp, TTL, encrypted session blob, and creator pubkey. Signing is performed
-/// over a canonical (deterministic, alphabetically-sorted, compact) JSON representation
-/// of the signable fields, excluding the signature itself.
+//! Record module: HandoffRecord struct with canonical JSON serialization and Ed25519 signing.
+//!
+//! HandoffRecord stores all metadata for a session handoff: hostname, project path,
+//! timestamp, TTL, encrypted session blob, and creator pubkey. Signing is performed
+//! over a canonical (deterministic, alphabetically-sorted, compact) JSON representation
+//! of the signable fields, excluding the signature itself.
 
 use base64::Engine;
 use serde::{Deserialize, Serialize};

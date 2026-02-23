@@ -67,7 +67,7 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
             Ok(bytes) => bytes,
             Err(e) => {
                 if e.downcast_ref::<crate::error::CclinkError>()
-                    .map_or(false, |ce| matches!(ce, crate::error::CclinkError::RecordNotFound))
+                    .is_some_and(|ce| matches!(ce, crate::error::CclinkError::RecordNotFound))
                 {
                     return Err(BackoffError::permanent(e));
                 }
@@ -91,7 +91,7 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
                 Ok(r) => Ok(r),
                 Err(e) => {
                     if e.downcast_ref::<crate::error::CclinkError>()
-                        .map_or(false, |ce| matches!(ce, crate::error::CclinkError::RecordNotFound))
+                        .is_some_and(|ce| matches!(ce, crate::error::CclinkError::RecordNotFound))
                     {
                         Err(BackoffError::permanent(e))
                     } else {
@@ -108,7 +108,7 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
                 Ok(r) => Ok(r),
                 Err(e) => {
                     if e.downcast_ref::<crate::error::CclinkError>()
-                        .map_or(false, |ce| matches!(ce, crate::error::CclinkError::RecordNotFound))
+                        .is_some_and(|ce| matches!(ce, crate::error::CclinkError::RecordNotFound))
                     {
                         Err(BackoffError::permanent(e))
                     } else {
