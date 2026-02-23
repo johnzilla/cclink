@@ -103,7 +103,7 @@ Plans:
 | 7. Code Quality and Transport | 2/2 | Complete    | 2026-02-22 | - |
 | 8. CLI Fixes and Documentation | v1.1 | Complete    | 2026-02-22 | 2026-02-22 |
 | 9. PIN-Protected Handoffs | 2/2 | Complete   | 2026-02-22 | - |
-| 10. Pubky Homeserver Transport Fix | 2/2 | Complete   | 2026-02-23 | - |
+| 10. Pubky Homeserver Transport Fix | 2/2 | Complete    | 2026-02-23 | - |
 
 ### Phase 10: Pubky Homeserver Transport Fix
 **Goal**: The transport layer works correctly against the real Pubky homeserver API — Host header identifies tenants, signup flow handles first-time users, and all CRUD operations succeed against live pubky.app

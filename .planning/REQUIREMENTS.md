@@ -18,7 +18,7 @@ Requirements for v1.1 Security Hardening & Code Review Fixes. Each maps to roadm
 - [x] **FUNC-01**: `--burn` and `--share` are mutually exclusive (CLI errors if both specified)
 - [x] **FUNC-02**: Self-publish success message shows correct pickup command (not raw token)
 - [x] **FUNC-03**: HomeserverClient reuses session cookies instead of signing in on every operation
-- [ ] **FUNC-04**: Transport layer uses correct Pubky homeserver API (Host header for tenant identification, signup/session flow, pubky:// URI parsing)
+- [x] **FUNC-04**: Transport layer uses correct Pubky homeserver API (Host header for tenant identification, signup/session flow, pubky:// URI parsing)
 
 ### Code Quality
 
