@@ -9,6 +9,7 @@
 use std::io::IsTerminal;
 use std::time::SystemTime;
 
+use backon::{BlockingRetryable, ExponentialBuilder};
 use base64::Engine;
 use owo_colors::{OwoColorize, Stream::Stdout};
 
@@ -56,8 +57,6 @@ fn parse_decrypted(
 
 /// Run the pickup flow.
 pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
-    use backoff::{retry, Error as BackoffError, ExponentialBackoff};
-
     // ── 1. Load keypair ──────────────────────────────────────────────────
     let keypair = crate::keys::store::load_keypair()?;
     let own_z32 = keypair.public_key().to_z32();
@@ -68,29 +67,22 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
     let client = crate::transport::DhtClient::new()?;
 
     // ── 2. Retrieve record with retry/backoff ────────────────────────────
-    let backoff_config = ExponentialBackoff {
-        max_elapsed_time: Some(std::time::Duration::from_secs(30)),
-        max_interval: std::time::Duration::from_secs(8),
-        initial_interval: std::time::Duration::from_secs(2),
-        ..Default::default()
-    };
-
     let target_z32_owned = target_z32.to_string();
-    let record = retry(backoff_config, || {
-        match client.resolve_record(&target_z32_owned) {
-            Ok(r) => Ok(r),
-            Err(e) => {
-                if e.downcast_ref::<crate::error::CclinkError>()
-                    .is_some_and(|ce| matches!(ce, crate::error::CclinkError::RecordNotFound))
-                {
-                    Err(BackoffError::permanent(e))
-                } else {
-                    Err(BackoffError::transient(e))
-                }
-            }
-        }
-    })
-    .map_err(|e| anyhow::anyhow!("Failed to retrieve handoff after retries: {}", e))?;
+    let record = (|| client.resolve_record(&target_z32_owned))
+        .retry(
+            ExponentialBuilder::default()
+                .with_min_delay(std::time::Duration::from_secs(2))
+                .with_max_delay(std::time::Duration::from_secs(8))
+                .with_total_delay(Some(std::time::Duration::from_secs(30))),
+        )
+        .sleep(std::thread::sleep)
+        .when(|e| {
+            // Retry on transient errors; stop immediately on RecordNotFound (permanent)
+            !e.downcast_ref::<crate::error::CclinkError>()
+                .is_some_and(|ce| matches!(ce, crate::error::CclinkError::RecordNotFound))
+        })
+        .call()
+        .map_err(|e| anyhow::anyhow!("Failed to retrieve handoff after retries: {}", e))?;
 
     // ── 3. TTL expiry check ──────────────────────────────────────────────
     let now_secs = SystemTime::now()
