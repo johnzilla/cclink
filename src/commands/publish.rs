@@ -78,10 +78,22 @@ pub fn run_publish(cli: &crate::cli::Cli) -> anyhow::Result<()> {
         session.project.if_supports_color(Stdout, |t| t.cyan())
     );
 
-    // ── 4. Encrypt session ID ─────────────────────────────────────────────
-    // --pin:   encrypt with PIN-derived key (prompts for PIN with confirmation)
-    // --share: encrypt to the specified recipient's X25519 key (ENC-01)
-    // Otherwise: self-encrypt to own X25519 key (existing behavior)
+    // ── 4. Build encrypted payload ──────────────────────────────────────
+    // Encrypt hostname, project path, and session ID together into the blob
+    // so no sensitive metadata is visible in cleartext on the DHT.
+    let created_at = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)?
+        .as_secs();
+    let hostname = gethostname::gethostname().to_string_lossy().into_owned();
+
+    let payload = crate::record::Payload {
+        hostname,
+        project: session.project.clone(),
+        session_id: session.session_id.clone(),
+    };
+    let payload_bytes = serde_json::to_vec(&payload)
+        .map_err(|e| anyhow::anyhow!("failed to serialize payload: {}", e))?;
+
     let (blob, pin_salt_value) = if cli.pin {
         // PIN-protected: prompt for PIN, encrypt with PIN-derived key
         let pin = dialoguer::Password::new()
@@ -90,7 +102,7 @@ pub fn run_publish(cli: &crate::cli::Cli) -> anyhow::Result<()> {
             .interact()
             .map_err(|e| anyhow::anyhow!("PIN prompt failed: {}", e))?;
 
-        let (ciphertext, salt) = crate::crypto::pin_encrypt(session.session_id.as_bytes(), &pin)?;
+        let (ciphertext, salt) = crate::crypto::pin_encrypt(&payload_bytes, &pin)?;
         let blob = base64::engine::general_purpose::STANDARD.encode(&ciphertext);
         let salt_b64 = base64::engine::general_purpose::STANDARD.encode(salt);
         (blob, Some(salt_b64))
@@ -102,24 +114,21 @@ pub fn run_publish(cli: &crate::cli::Cli) -> anyhow::Result<()> {
             let x25519_pubkey = crate::crypto::ed25519_to_x25519_public(&keypair);
             crate::crypto::age_recipient(&x25519_pubkey)
         };
-        let ciphertext = crate::crypto::age_encrypt(session.session_id.as_bytes(), &recipient)?;
+        let ciphertext = crate::crypto::age_encrypt(&payload_bytes, &recipient)?;
         let blob = base64::engine::general_purpose::STANDARD.encode(&ciphertext);
         (blob, None)
     };
 
     // ── 5. Build and sign record ──────────────────────────────────────────
-    let created_at = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)?
-        .as_secs();
-    let hostname = gethostname::gethostname().to_string_lossy().into_owned();
-
+    // Outer hostname and project are empty — sensitive metadata lives only
+    // inside the encrypted blob.
     let signable = crate::record::HandoffRecordSignable {
         blob,
         burn: cli.burn,
         created_at,
-        hostname,
+        hostname: String::new(),
         pin_salt: pin_salt_value.clone(),
-        project: session.project.clone(),
+        project: String::new(),
         pubkey: keypair.public_key().to_z32(),
         recipient: cli.share.clone(),
         ttl: cli.ttl,

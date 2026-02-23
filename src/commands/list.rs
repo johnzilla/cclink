@@ -1,4 +1,5 @@
 /// List command — displays the active handoff record from the DHT.
+use base64::Engine;
 use owo_colors::{OwoColorize, Stream::Stdout};
 
 use crate::util::human_duration;
@@ -49,7 +50,30 @@ pub fn run_list() -> anyhow::Result<()> {
         return Ok(());
     }
 
-    // ── 4. Build and render comfy-table ──────────────────────────────────
+    // ── 4. Decrypt project from payload ──────────────────────────────────
+    let project_display = if record.pin_salt.is_some() {
+        "(PIN-protected)".to_string()
+    } else if record.recipient.is_some() {
+        "(shared)".to_string()
+    } else {
+        // Self-encrypted: decrypt blob to extract project path
+        let ciphertext = base64::engine::general_purpose::STANDARD
+            .decode(&record.blob)
+            .unwrap_or_default();
+        let x25519_secret = crate::crypto::ed25519_to_x25519_secret(&keypair);
+        let identity = crate::crypto::age_identity(&x25519_secret);
+        match crate::crypto::age_decrypt(&ciphertext, &identity) {
+            Ok(plaintext) => {
+                match serde_json::from_slice::<crate::record::Payload>(&plaintext) {
+                    Ok(payload) => payload.project,
+                    Err(_) => record.project.clone(), // old format fallback
+                }
+            }
+            Err(_) => "(encrypted)".to_string(),
+        }
+    };
+
+    // ── 5. Build and render comfy-table ──────────────────────────────────
     let mut table = Table::new();
     table.set_header(vec!["Project", "Age", "TTL Left", "Burn", "Recipient"]);
 
@@ -64,7 +88,7 @@ pub fn run_list() -> anyhow::Result<()> {
     };
 
     table.add_row(vec![
-        Cell::new(&record.project),
+        Cell::new(&project_display),
         Cell::new(human_duration(age_secs)),
         Cell::new(human_duration(ttl_left)),
         if record.burn {

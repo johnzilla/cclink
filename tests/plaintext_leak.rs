@@ -1,14 +1,15 @@
 /// Plaintext leak detection tests.
 ///
-/// Verify that encrypted blobs produced by the age encryption path never
-/// contain the original session ID in any readable form — neither as raw bytes
-/// nor as a base64-encoded string.
+/// Verify that encrypted blobs and HandoffRecord JSON never contain sensitive
+/// metadata (session ID, hostname, project path) in any readable form — neither
+/// as raw bytes nor as a base64-encoded string.
 ///
 /// These tests guard against regression where a refactor accidentally stores
 /// or transmits plaintext session data alongside the ciphertext.
 
 use base64::Engine;
 use cclink::crypto::{age_encrypt, age_recipient, ed25519_to_x25519_public};
+use cclink::record::Payload;
 
 /// Fixed keypair seed used as the self-encrypt key.
 fn keypair_self() -> pkarr::Keypair {
@@ -120,4 +121,130 @@ fn test_base64_encoded_blob_contains_no_plaintext() {
         !found_in_base64_bytes,
         "base64-encoded blob bytes must not contain the plaintext session ID byte sequence"
     );
+}
+
+// ── Test 4: Hostname not in HandoffRecord JSON ──────────────────────────
+
+/// Build a HandoffRecord with encrypted Payload (as publish.rs does) and verify
+/// the hostname does not appear anywhere in the serialized JSON stored on the DHT.
+#[test]
+fn test_hostname_not_in_record_json() {
+    let keypair = keypair_self();
+    let recipient = recipient_for(&keypair);
+
+    let hostname = "KNOWN-HOSTNAME-MUST-NOT-APPEAR";
+    let session_id = "sess-abc123-secret";
+
+    let payload = Payload {
+        hostname: hostname.to_string(),
+        project: "/home/user/project".to_string(),
+        session_id: session_id.to_string(),
+    };
+    let payload_bytes = serde_json::to_vec(&payload).expect("serialize payload");
+    let ciphertext = age_encrypt(&payload_bytes, &recipient).expect("encrypt");
+    let blob = base64::engine::general_purpose::STANDARD.encode(&ciphertext);
+
+    // Build record with empty outer fields (as publish.rs now does)
+    let record = cclink::record::HandoffRecord {
+        blob,
+        burn: false,
+        created_at: 1_700_000_000,
+        hostname: String::new(),
+        pin_salt: None,
+        project: String::new(),
+        pubkey: keypair.public_key().to_z32(),
+        recipient: None,
+        signature: "test-sig".to_string(),
+        ttl: 3600,
+    };
+
+    let json = serde_json::to_string(&record).expect("serialize record");
+    assert!(
+        !json.contains(hostname),
+        "HandoffRecord JSON must not contain hostname in cleartext"
+    );
+    assert!(
+        !json.contains(session_id),
+        "HandoffRecord JSON must not contain session_id in cleartext"
+    );
+}
+
+// ── Test 5: Project path not in HandoffRecord JSON ──────────────────────
+
+/// Build a HandoffRecord with encrypted Payload and verify the project path
+/// does not appear in the serialized JSON.
+#[test]
+fn test_project_path_not_in_record_json() {
+    let keypair = keypair_self();
+    let recipient = recipient_for(&keypair);
+
+    let project = "KNOWN-PROJECT-PATH-/home/alice/top-secret";
+    let hostname = "my-laptop";
+    let session_id = "sess-xyz789";
+
+    let payload = Payload {
+        hostname: hostname.to_string(),
+        project: project.to_string(),
+        session_id: session_id.to_string(),
+    };
+    let payload_bytes = serde_json::to_vec(&payload).expect("serialize payload");
+    let ciphertext = age_encrypt(&payload_bytes, &recipient).expect("encrypt");
+    let blob = base64::engine::general_purpose::STANDARD.encode(&ciphertext);
+
+    let record = cclink::record::HandoffRecord {
+        blob,
+        burn: false,
+        created_at: 1_700_000_000,
+        hostname: String::new(),
+        pin_salt: None,
+        project: String::new(),
+        pubkey: keypair.public_key().to_z32(),
+        recipient: None,
+        signature: "test-sig".to_string(),
+        ttl: 3600,
+    };
+
+    let json = serde_json::to_string(&record).expect("serialize record");
+    assert!(
+        !json.contains(project),
+        "HandoffRecord JSON must not contain project path in cleartext"
+    );
+    assert!(
+        !json.contains(hostname),
+        "HandoffRecord JSON must not contain hostname in cleartext"
+    );
+    assert!(
+        !json.contains(session_id),
+        "HandoffRecord JSON must not contain session_id in cleartext"
+    );
+}
+
+// ── Test 6: Payload round-trip through encrypt/decrypt ──────────────────
+
+/// Encrypt a Payload with all metadata, decrypt, and verify all fields match.
+/// This is the full publish → pickup round-trip for the new encrypted payload format.
+#[test]
+fn test_payload_encrypt_decrypt_round_trip() {
+    use cclink::crypto::{age_decrypt, age_identity, ed25519_to_x25519_secret};
+
+    let keypair = keypair_self();
+    let recipient = recipient_for(&keypair);
+
+    let payload = Payload {
+        hostname: "test-machine".to_string(),
+        project: "/home/user/secret-project".to_string(),
+        session_id: "sess-round-trip-12345".to_string(),
+    };
+    let payload_bytes = serde_json::to_vec(&payload).expect("serialize payload");
+    let ciphertext = age_encrypt(&payload_bytes, &recipient).expect("encrypt");
+
+    // Decrypt with own key
+    let x25519_secret = ed25519_to_x25519_secret(&keypair);
+    let identity = age_identity(&x25519_secret);
+    let plaintext = age_decrypt(&ciphertext, &identity).expect("decrypt");
+
+    let recovered: Payload = serde_json::from_slice(&plaintext).expect("deserialize payload");
+    assert_eq!(recovered.session_id, payload.session_id);
+    assert_eq!(recovered.hostname, payload.hostname);
+    assert_eq!(recovered.project, payload.project);
 }

@@ -39,6 +39,21 @@ fn launch_claude_resume(session_id: &str) -> anyhow::Result<()> {
     }
 }
 
+/// Parse decrypted blob as Payload JSON (new format) or raw session_id (old format).
+fn parse_decrypted(
+    plaintext: Vec<u8>,
+    record: &crate::record::HandoffRecord,
+) -> anyhow::Result<(String, String)> {
+    if let Ok(payload) = serde_json::from_slice::<crate::record::Payload>(&plaintext) {
+        Ok((payload.session_id, payload.project))
+    } else {
+        // Old format: raw session_id string, metadata in outer record
+        let session_id = String::from_utf8(plaintext)
+            .map_err(|e| anyhow::anyhow!("session ID is not valid UTF-8: {}", e))?;
+        Ok((session_id, record.project.clone()))
+    }
+}
+
 /// Run the pickup flow.
 pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
     use backoff::{retry, ExponentialBackoff, Error as BackoffError};
@@ -106,6 +121,7 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
     let human_age = human_duration(age_secs);
 
     let session_id: String;
+    let display_project: String;
 
     // ── PIN-protected record detection ───────────────────────────────────
     if let Some(ref pin_salt_b64) = record.pin_salt {
@@ -133,8 +149,9 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
 
         match crate::crypto::pin_decrypt(&ciphertext, &pin, &salt) {
             Ok(plaintext) => {
-                session_id = String::from_utf8(plaintext)
-                    .map_err(|e| anyhow::anyhow!("session ID is not valid UTF-8: {}", e))?;
+                let (sid, proj) = parse_decrypted(plaintext, &record)?;
+                session_id = sid;
+                display_project = proj;
             }
             Err(_) => {
                 eprintln!(
@@ -155,22 +172,15 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
 
         match crate::crypto::age_decrypt(&ciphertext, &identity) {
             Ok(plaintext) => {
-                session_id = String::from_utf8(plaintext)
-                    .map_err(|e| anyhow::anyhow!("session ID is not valid UTF-8: {}", e))?;
+                let (sid, proj) = parse_decrypted(plaintext, &record)?;
+                session_id = sid;
+                display_project = proj;
             }
             Err(_) => {
-                // Cannot decrypt — show cleartext metadata
+                // Cannot decrypt — metadata is encrypted in the blob
                 println!(
                     "Handoff from {}",
                     record.pubkey.if_supports_color(Stdout, |t| t.cyan())
-                );
-                println!(
-                    "  Host: {}",
-                    record.hostname.if_supports_color(Stdout, |t| t.cyan())
-                );
-                println!(
-                    "  Project: {}",
-                    record.project.if_supports_color(Stdout, |t| t.cyan())
                 );
                 println!("  Created: {} ago", human_age);
                 if record.recipient.is_some() {
@@ -202,8 +212,6 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
                 )
                 .if_supports_color(Stdout, |t| t.red())
             );
-            println!("  Host: {}", record.hostname);
-            println!("  Project: {}", record.project);
             println!("  Created: {} ago", human_age);
             return Ok(());
         }
@@ -215,8 +223,9 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
         let x25519_secret = crate::crypto::ed25519_to_x25519_secret(&keypair);
         let identity = crate::crypto::age_identity(&x25519_secret);
         let plaintext = crate::crypto::age_decrypt(&ciphertext, &identity)?;
-        session_id = String::from_utf8(plaintext)
-            .map_err(|e| anyhow::anyhow!("session ID is not valid UTF-8: {}", e))?;
+        let (sid, proj) = parse_decrypted(plaintext, &record)?;
+        session_id = sid;
+        display_project = proj;
     }
 
     // ── 5. Burn-after-read ───────────────────────────────────────────────
@@ -239,7 +248,7 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
             .with_prompt(format!(
                 "Resume session {} ({}) published {} ago?",
                 &session_id[..8.min(session_id.len())],
-                record.project,
+                display_project,
                 human_age
             ))
             .default(true)

@@ -1,4 +1,5 @@
 /// Revoke command — publishes an empty SignedPacket to revoke the active handoff.
+use base64::Engine;
 use std::io::IsTerminal;
 
 use owo_colors::{OwoColorize, Stream::Stdout};
@@ -28,13 +29,35 @@ pub fn run_revoke(args: crate::cli::RevokeArgs) -> anyhow::Result<()> {
         }
     };
 
-    // ── 3. Confirmation prompt ───────────────────────────────────────────
+    // ── 3. Decrypt project for display ────────────────────────────────────
+    let project_display = if record.pin_salt.is_some() {
+        "(PIN-protected)".to_string()
+    } else if record.recipient.is_some() {
+        "(shared)".to_string()
+    } else {
+        let ciphertext = base64::engine::general_purpose::STANDARD
+            .decode(&record.blob)
+            .unwrap_or_default();
+        let x25519_secret = crate::crypto::ed25519_to_x25519_secret(&keypair);
+        let identity = crate::crypto::age_identity(&x25519_secret);
+        match crate::crypto::age_decrypt(&ciphertext, &identity) {
+            Ok(plaintext) => {
+                match serde_json::from_slice::<crate::record::Payload>(&plaintext) {
+                    Ok(payload) => payload.project,
+                    Err(_) => record.project.clone(),
+                }
+            }
+            Err(_) => "(encrypted)".to_string(),
+        }
+    };
+
+    // ── 4. Confirmation prompt ───────────────────────────────────────────
     let skip_confirm = args.yes || !std::io::stdin().is_terminal();
     if !skip_confirm {
         let confirmed = dialoguer::Confirm::new()
             .with_prompt(format!(
                 "Revoke handoff for {}?",
-                record.project
+                project_display
             ))
             .default(false)
             .interact()
@@ -45,12 +68,12 @@ pub fn run_revoke(args: crate::cli::RevokeArgs) -> anyhow::Result<()> {
         }
     }
 
-    // ── 4. Revoke by publishing empty packet ─────────────────────────────
+    // ── 5. Revoke by publishing empty packet ─────────────────────────────
     client.revoke(&keypair)?;
     println!(
         "{} ({})",
         "Revoked.".if_supports_color(Stdout, |t| t.green()),
-        record.project
+        project_display
     );
 
     Ok(())

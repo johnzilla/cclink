@@ -127,20 +127,21 @@ Modes can be combined: `cclink --burn --pin` creates a PIN-protected, single-use
 
 - **Identity**: Ed25519 keypair via [PKARR](https://pkarr.org/) — the same key format used across the Pubky ecosystem
 - **Transport**: [PKARR Mainline DHT](https://crates.io/crates/pkarr) — records are published as DNS TXT records inside Ed25519-signed packets, addressed by public key
-- **Encryption**: [age](https://age-encryption.org/) (X25519) for session payloads; Ed25519 keys are converted to X25519 for encryption
+- **Encryption**: [age](https://age-encryption.org/) (X25519) for the full payload (session ID + hostname + project path); Ed25519 keys are converted to X25519 for encryption. No metadata is visible in cleartext on the DHT.
 - **Signing**: Dual signatures — PKARR packet signature (DHT authentication) + inner Ed25519 signature over canonical JSON (defense in depth)
 
 ## Security model
 
 | Threat | Mitigation |
 |--------|------------|
-| DHT node reads session IDs | Session IDs are age-encrypted; DHT nodes see only ciphertext |
+| DHT node reads session IDs | Session IDs are age-encrypted inside the payload blob; DHT nodes see only ciphertext |
+| DHT node reads hostname/project | Hostname and project path are encrypted inside the payload blob alongside the session ID — no metadata leakage |
 | Forged handoff record | Dual Ed25519 signature verification (PKARR packet + inner record) |
 | Replay attack | TTL expiry + optional burn-after-read |
 | Intercepted QR/link | PIN mode adds a second factor; burn mode limits the window |
 | Key compromise | Keys stored with 0600 permissions; cclink refuses to read keys with looser perms |
 
-**Key principle**: No session content transits the network. Only the encrypted session ID and metadata are published. The pickup device still needs access to `~/.claude/sessions/` (via shared filesystem, SSH, Tailscale, etc.) to actually resume the session.
+**Key principle**: No session content or metadata transits the network in cleartext. The entire payload (session ID, hostname, project path) is encrypted into a single blob. The outer record contains only the ciphertext, timestamps, public key, and flags. The pickup device still needs access to `~/.claude/sessions/` (via shared filesystem, SSH, Tailscale, etc.) to actually resume the session.
 
 ## License
 
