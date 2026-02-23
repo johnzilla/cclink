@@ -104,12 +104,20 @@ pub fn build_auth_token(keypair: &pkarr::Keypair) -> anyhow::Result<Vec<u8>> {
 /// session cookie acquired via `signin()` is automatically sent on subsequent
 /// PUT requests.
 ///
+/// The Pubky homeserver uses virtual hosting: every request must include a
+/// `Host` header containing the z32-encoded public key of the tenant. Without
+/// it, the server cannot identify which user's namespace to operate on and
+/// returns 404 for all requests.
+///
 /// The `signed_in` flag ensures signin HTTP POST is called at most once per
 /// client lifetime, regardless of how many authenticated operations follow.
 pub struct HomeserverClient {
     client: reqwest::blocking::Client,
     /// Homeserver hostname, e.g. "pubky.app" (no scheme, no trailing slash).
     homeserver: String,
+    /// z32-encoded public key of the keypair that owns this client instance.
+    /// Used as the `Host` header value on all self-operations.
+    pubkey_z32: String,
     /// Tracks whether a session has been established. Uses Cell<bool> for
     /// interior mutability so &self methods can update state without &mut self.
     signed_in: Cell<bool>,
@@ -120,7 +128,11 @@ impl HomeserverClient {
     ///
     /// `homeserver` should be a plain hostname like "pubky.app". Any "https://"
     /// prefix is stripped automatically.
-    pub fn new(homeserver: &str) -> anyhow::Result<Self> {
+    ///
+    /// `pubkey_z32` is the z32-encoded public key of the keypair that owns this
+    /// client. It is included as the `Host` header on all self-operations so the
+    /// Pubky homeserver can identify the correct tenant namespace.
+    pub fn new(homeserver: &str, pubkey_z32: &str) -> anyhow::Result<Self> {
         let homeserver = homeserver
             .trim_start_matches("https://")
             .trim_start_matches("http://")
@@ -133,7 +145,24 @@ impl HomeserverClient {
             .build()
             .map_err(|e| anyhow::anyhow!("failed to build HTTP client: {}", e))?;
 
-        Ok(Self { client, homeserver, signed_in: Cell::new(false) })
+        Ok(Self {
+            client,
+            homeserver,
+            pubkey_z32: pubkey_z32.to_string(),
+            signed_in: Cell::new(false),
+        })
+    }
+
+    /// Return the pubkey z32 to use as the `Host` header value.
+    ///
+    /// If `pubkey_z32` is `Some(pk)`, use that (cross-user operation targeting
+    /// a specific tenant). Otherwise use `self.pubkey_z32` (self-operation on
+    /// the client's own namespace).
+    fn host_header(&self, pubkey_z32: Option<&str>) -> String {
+        match pubkey_z32 {
+            Some(pk) => pk.to_string(),
+            None => self.pubkey_z32.clone(),
+        }
     }
 
     /// Sign in to the homeserver with a Pubky AuthToken.
@@ -141,21 +170,73 @@ impl HomeserverClient {
     /// POSTs the binary AuthToken to `/session`. The homeserver sets a session
     /// cookie that is automatically stored in the client's cookie jar.
     ///
+    /// For first-time users (accounts that have never signed up), the homeserver
+    /// returns 404 on POST `/session`. In that case, this method automatically
+    /// falls back to POST `/signup` with the same token. If `/signup` returns 409
+    /// (user already exists — a race condition), it retries `/session` once.
+    ///
     /// Sets the `signed_in` flag on success so that `ensure_signed_in()` will
     /// skip subsequent calls within the same client lifetime.
+    ///
+    /// Both `/session` and `/signup` requests include the `Host` header so the
+    /// homeserver can route to the correct tenant namespace.
     pub fn signin(&self, keypair: &pkarr::Keypair) -> anyhow::Result<()> {
         let token_bytes = build_auth_token(keypair)?;
-        let url = format!("https://{}/session", self.homeserver);
+        let session_url = format!("https://{}/session", self.homeserver);
 
         let response = self
             .client
-            .post(&url)
-            .body(token_bytes)
+            .post(&session_url)
+            .header("Host", &self.pubkey_z32)
+            .body(token_bytes.clone())
             .send()
             .map_err(|e| anyhow::anyhow!("signin request failed: {}", e))?;
 
-        if !response.status().is_success() {
-            let status = response.status();
+        let status = response.status();
+
+        if status == reqwest::StatusCode::NOT_FOUND {
+            // First-time user: account not yet registered. Fall back to /signup.
+            let signup_url = format!("https://{}/signup", self.homeserver);
+            let signup_response = self
+                .client
+                .post(&signup_url)
+                .header("Host", &self.pubkey_z32)
+                .body(token_bytes.clone())
+                .send()
+                .map_err(|e| anyhow::anyhow!("signup request failed: {}", e))?;
+
+            let signup_status = signup_response.status();
+
+            if signup_status == reqwest::StatusCode::CONFLICT {
+                // Race condition: user was created between our /session and /signup.
+                // Retry /session once.
+                let retry_response = self
+                    .client
+                    .post(&session_url)
+                    .header("Host", &self.pubkey_z32)
+                    .body(build_auth_token(keypair)?) // Fresh token with current timestamp
+                    .send()
+                    .map_err(|e| anyhow::anyhow!("signin retry request failed: {}", e))?;
+
+                if !retry_response.status().is_success() {
+                    let retry_status = retry_response.status();
+                    let body = retry_response.text().unwrap_or_default();
+                    anyhow::bail!(
+                        "signin retry failed after signup conflict (status {}): {}",
+                        retry_status,
+                        body.trim()
+                    );
+                }
+            } else if !signup_status.is_success() {
+                let body = signup_response.text().unwrap_or_default();
+                anyhow::bail!(
+                    "signup failed (status {}): {}",
+                    signup_status,
+                    body.trim()
+                );
+            }
+            // /signup succeeded (or conflict resolved) — session is now established
+        } else if !status.is_success() {
             let body = response.text().unwrap_or_default();
             anyhow::bail!(
                 "signin failed (status {}): {}",
@@ -182,13 +263,15 @@ impl HomeserverClient {
     /// PUT a serialized HandoffRecord at `/pub/cclink/{token}`.
     ///
     /// Requires a prior successful `signin()` call. The session cookie is sent
-    /// automatically by the reqwest cookie jar.
+    /// automatically by the reqwest cookie jar. Includes the `Host` header so
+    /// the homeserver routes to the correct tenant namespace.
     pub fn put_record(&self, token: &str, record_bytes: &[u8]) -> anyhow::Result<()> {
         let url = format!("https://{}/pub/cclink/{}", self.homeserver, token);
 
         let response = self
             .client
             .put(&url)
+            .header("Host", &self.pubkey_z32)
             .header("content-type", "application/octet-stream")
             .body(record_bytes.to_vec())
             .send()
@@ -209,13 +292,15 @@ impl HomeserverClient {
 
     /// PUT the latest.json pointer at `/pub/cclink/latest`.
     ///
-    /// Requires a prior successful `signin()` call.
+    /// Requires a prior successful `signin()` call. Includes the `Host` header
+    /// so the homeserver routes to the correct tenant namespace.
     pub fn put_latest(&self, latest_bytes: &[u8]) -> anyhow::Result<()> {
         let url = format!("https://{}/pub/cclink/latest", self.homeserver);
 
         let response = self
             .client
             .put(&url)
+            .header("Host", &self.pubkey_z32)
             .header("content-type", "application/octet-stream")
             .body(latest_bytes.to_vec())
             .send()
@@ -239,44 +324,46 @@ impl HomeserverClient {
     /// The record is deserialized from JSON and its Ed25519 signature is verified
     /// against `pubkey` before being returned. Returns an error on 404 or
     /// signature mismatch (hard fail — no bypass).
+    ///
+    /// Uses the client's own pubkey as the `Host` header (self-operation).
     pub fn get_record(
         &self,
         token: &str,
         pubkey: &pkarr::PublicKey,
     ) -> anyhow::Result<HandoffRecord> {
         let url = format!("https://{}/pub/cclink/{}", self.homeserver, token);
-        let bytes = self.get_bytes(&url)?;
+        let bytes = self.get_bytes(&url, None)?;
         self.deserialize_and_verify(&bytes, pubkey)
     }
 
-    /// GET and verify a HandoffRecord using the multi-tenant path.
+    /// GET and verify a HandoffRecord using the Host-header-based multi-tenant routing.
     ///
-    /// URL pattern: `/{pubkey_z32}/pub/cclink/{token}` — used when reading
-    /// another user's records without a session cookie.
+    /// URL path: `/pub/cclink/{token}` (same as self-operation).
+    /// Tenant identification is done via the `Host` header set to `pubkey_z32`,
+    /// NOT by embedding the pubkey in the URL path. This is the correct Pubky
+    /// homeserver virtual hosting API.
     pub fn get_record_by_pubkey(
         &self,
         pubkey_z32: &str,
         token: &str,
         pubkey: &pkarr::PublicKey,
     ) -> anyhow::Result<HandoffRecord> {
-        let url = format!(
-            "https://{}/{}/pub/cclink/{}",
-            self.homeserver, pubkey_z32, token
-        );
-        let bytes = self.get_bytes(&url)?;
+        let url = format!("https://{}/pub/cclink/{}", self.homeserver, token);
+        let bytes = self.get_bytes(&url, Some(pubkey_z32))?;
         self.deserialize_and_verify(&bytes, pubkey)
     }
 
     /// GET the latest.json pointer bytes.
     ///
-    /// If `pubkey_z32` is `None`, reads own records via session cookie.
-    /// If `Some`, reads another user's records via multi-tenant path.
+    /// If `pubkey_z32` is `None`, reads own records via the client's pubkey in
+    /// the `Host` header. If `Some`, reads another user's records via their
+    /// pubkey in the `Host` header.
+    ///
+    /// URL path is always `/pub/cclink/latest` — tenant differentiation is done
+    /// via the `Host` header, not the URL path.
     pub fn get_latest(&self, pubkey_z32: Option<&str>) -> anyhow::Result<Vec<u8>> {
-        let url = match pubkey_z32 {
-            None => format!("https://{}/pub/cclink/latest", self.homeserver),
-            Some(pk) => format!("https://{}/{}/pub/cclink/latest", self.homeserver, pk),
-        };
-        self.get_bytes(&url)
+        let url = format!("https://{}/pub/cclink/latest", self.homeserver);
+        self.get_bytes(&url, pubkey_z32)
     }
 
     /// Publish a HandoffRecord: sign in, PUT record, PUT latest pointer.
@@ -319,9 +406,14 @@ impl HomeserverClient {
     ///
     /// Treats 404 as success (idempotent — record already deleted).
     /// Must be called AFTER `signin()` — the session cookie is forwarded automatically.
+    /// Includes the `Host` header for correct tenant routing.
     pub fn delete_record(&self, token: &str) -> anyhow::Result<()> {
         let url = format!("https://{}/pub/cclink/{}", self.homeserver, token);
-        let response = self.client.delete(&url).send()
+        let response = self
+            .client
+            .delete(&url)
+            .header("Host", &self.pubkey_z32)
+            .send()
             .map_err(|e| anyhow::anyhow!("DELETE request failed: {}", e))?;
         if response.status() == reqwest::StatusCode::NOT_FOUND {
             return Ok(()); // Already deleted — idempotent
@@ -338,9 +430,14 @@ impl HomeserverClient {
     /// Returns only numeric timestamp tokens — filters out "latest" and any non-numeric keys.
     /// Must be called AFTER `signin()` — the directory listing requires an authenticated session.
     /// Returns an empty vec if no records are published (404).
+    /// Includes the `Host` header for correct tenant routing.
     pub fn list_record_tokens(&self) -> anyhow::Result<Vec<String>> {
         let url = format!("https://{}/pub/cclink/", self.homeserver);
-        let response = self.client.get(&url).send()
+        let response = self
+            .client
+            .get(&url)
+            .header("Host", &self.pubkey_z32)
+            .send()
             .map_err(|e| anyhow::anyhow!("LIST request failed: {}", e))?;
         if response.status() == reqwest::StatusCode::NOT_FOUND {
             return Ok(vec![]);
@@ -398,10 +495,16 @@ impl HomeserverClient {
     // ── Private helpers ────────────────────────────────────────────────────
 
     /// Perform a GET request, returning response body bytes.
-    fn get_bytes(&self, url: &str) -> anyhow::Result<Vec<u8>> {
+    ///
+    /// `host_pubkey` overrides the `Host` header value. If `None`, uses the
+    /// client's own pubkey (self-operation). If `Some(pk)`, uses that pubkey
+    /// (cross-user operation targeting a different tenant).
+    fn get_bytes(&self, url: &str, host_pubkey: Option<&str>) -> anyhow::Result<Vec<u8>> {
+        let host = self.host_header(host_pubkey);
         let response = self
             .client
             .get(url)
+            .header("Host", &host)
             .send()
             .map_err(|e| anyhow::anyhow!("GET request failed: {}", e))?;
 
@@ -534,8 +637,10 @@ mod tests {
 
     #[test]
     fn test_homeserver_client_new() {
+        let keypair = fixed_keypair();
+        let pubkey_z32 = keypair.public_key().to_z32();
         // Client should build with cookie_store enabled
-        let client = HomeserverClient::new("pubky.app");
+        let client = HomeserverClient::new("pubky.app", &pubkey_z32);
         assert!(
             client.is_ok(),
             "HomeserverClient::new should succeed with valid hostname"
@@ -544,7 +649,9 @@ mod tests {
 
     #[test]
     fn test_homeserver_client_strips_https_prefix() {
-        let client = HomeserverClient::new("https://pubky.app").expect("should succeed");
+        let keypair = fixed_keypair();
+        let pubkey_z32 = keypair.public_key().to_z32();
+        let client = HomeserverClient::new("https://pubky.app", &pubkey_z32).expect("should succeed");
         assert_eq!(
             client.homeserver, "pubky.app",
             "https:// prefix should be stripped"
@@ -552,9 +659,50 @@ mod tests {
     }
 
     #[test]
+    fn test_homeserver_client_stores_pubkey_z32() {
+        let keypair = fixed_keypair();
+        let pubkey_z32 = keypair.public_key().to_z32();
+        let client = HomeserverClient::new("pubky.app", &pubkey_z32).expect("should succeed");
+        assert_eq!(
+            client.pubkey_z32, pubkey_z32,
+            "pubkey_z32 should be stored in the client"
+        );
+    }
+
+    #[test]
+    fn test_host_header_self_operation() {
+        let keypair = fixed_keypair();
+        let pubkey_z32 = keypair.public_key().to_z32();
+        let client = HomeserverClient::new("pubky.app", &pubkey_z32).expect("should succeed");
+        // None -> uses client's own pubkey
+        assert_eq!(
+            client.host_header(None),
+            pubkey_z32,
+            "host_header(None) should return client's own pubkey_z32"
+        );
+    }
+
+    #[test]
+    fn test_host_header_cross_user_operation() {
+        let keypair_a = fixed_keypair();
+        let keypair_b = pkarr::Keypair::from_secret_key(&[99u8; 32]);
+        let pubkey_a = keypair_a.public_key().to_z32();
+        let pubkey_b = keypair_b.public_key().to_z32();
+        let client = HomeserverClient::new("pubky.app", &pubkey_a).expect("should succeed");
+        // Some(pk) -> uses that pubkey (cross-user)
+        assert_eq!(
+            client.host_header(Some(&pubkey_b)),
+            pubkey_b,
+            "host_header(Some(pk)) should return the provided pubkey"
+        );
+    }
+
+    #[test]
     fn test_ensure_signed_in_flag() {
+        let keypair = fixed_keypair();
+        let pubkey_z32 = keypair.public_key().to_z32();
         // New client should start with signed_in = false
-        let client = HomeserverClient::new("pubky.app").expect("client build failed");
+        let client = HomeserverClient::new("pubky.app", &pubkey_z32).expect("client build failed");
         assert!(
             !client.signed_in.get(),
             "signed_in should be false on new client"
@@ -573,6 +721,26 @@ mod tests {
             !client.signed_in.get(),
             "signed_in should be false after reset"
         );
+    }
+
+    #[test]
+    fn test_signin_url_construction() {
+        // Verify the session and signup URL patterns are constructed correctly.
+        // (Cannot test actual network, but verifies the string format.)
+        let keypair = fixed_keypair();
+        let pubkey_z32 = keypair.public_key().to_z32();
+        let client = HomeserverClient::new("pubky.app", &pubkey_z32).expect("should succeed");
+
+        // Verify expected URL format for /session
+        let session_url = format!("https://{}/session", client.homeserver);
+        assert_eq!(session_url, "https://pubky.app/session");
+
+        // Verify expected URL format for /signup
+        let signup_url = format!("https://{}/signup", client.homeserver);
+        assert_eq!(signup_url, "https://pubky.app/signup");
+
+        // Verify the Host header will be the pubkey_z32
+        assert_eq!(client.pubkey_z32, pubkey_z32);
     }
 
     #[test]
@@ -625,6 +793,7 @@ mod tests {
         // Test the deserialization + verify_record pipeline used by get_record
         // without a live homeserver.
         let keypair = fixed_keypair();
+        let pubkey_z32 = keypair.public_key().to_z32();
         let created_at: u64 = 1_700_000_000;
 
         let signable = HandoffRecordSignable {
@@ -634,7 +803,7 @@ mod tests {
             hostname: "testhost".to_string(),
             pin_salt: None,
             project: "/test".to_string(),
-            pubkey: keypair.public_key().to_z32(),
+            pubkey: pubkey_z32.clone(),
             recipient: None,
             ttl: 3600,
         };
@@ -656,7 +825,7 @@ mod tests {
         let json_bytes = serde_json::to_vec(&record).expect("serialize failed");
 
         // Simulate what get_record does internally: deserialize + verify
-        let client = HomeserverClient::new("pubky.app").expect("client build failed");
+        let client = HomeserverClient::new("pubky.app", &pubkey_z32).expect("client build failed");
         let result = client.deserialize_and_verify(&json_bytes, &keypair.public_key());
         assert!(result.is_ok(), "valid signed record should deserialize and verify: {:?}", result.err());
 
@@ -675,6 +844,7 @@ mod tests {
     fn test_get_record_wrong_pubkey_fails() {
         let keypair_a = fixed_keypair();
         let keypair_b = pkarr::Keypair::from_secret_key(&[99u8; 32]);
+        let pubkey_a_z32 = keypair_a.public_key().to_z32();
 
         let signable = HandoffRecordSignable {
             blob: "dGVzdA==".to_string(),
@@ -683,7 +853,7 @@ mod tests {
             hostname: "testhost".to_string(),
             pin_salt: None,
             project: "/test".to_string(),
-            pubkey: keypair_a.public_key().to_z32(),
+            pubkey: pubkey_a_z32.clone(),
             recipient: None,
             ttl: 3600,
         };
@@ -702,7 +872,7 @@ mod tests {
         };
 
         let json_bytes = serde_json::to_vec(&record).expect("serialize failed");
-        let client = HomeserverClient::new("pubky.app").expect("client build failed");
+        let client = HomeserverClient::new("pubky.app", &pubkey_a_z32).expect("client build failed");
 
         // Verify with wrong pubkey must fail
         let result = client.deserialize_and_verify(&json_bytes, &keypair_b.public_key());
@@ -716,10 +886,11 @@ mod tests {
     #[ignore]
     fn test_integration_signin_put_get() {
         let keypair = pkarr::Keypair::random();
+        let pubkey_z32 = keypair.public_key().to_z32();
 
-        let client = HomeserverClient::new("pubky.app").expect("client build failed");
+        let client = HomeserverClient::new("pubky.app", &pubkey_z32).expect("client build failed");
 
-        // Sign in
+        // Sign in (handles signup fallback for new keypair)
         client.signin(&keypair).expect("signin should succeed");
 
         // Build a signed record
@@ -733,7 +904,7 @@ mod tests {
             hostname: "integration-test".to_string(),
             pin_salt: None,
             project: "/test".to_string(),
-            pubkey: keypair.public_key().to_z32(),
+            pubkey: pubkey_z32.clone(),
             recipient: None,
             ttl: 3600,
         };
@@ -761,5 +932,123 @@ mod tests {
             .expect("get_record should succeed");
         assert_eq!(retrieved.created_at, record.created_at);
         assert_eq!(retrieved.hostname, record.hostname);
+    }
+
+    /// Integration test: first-time user signup flow.
+    ///
+    /// Verifies that a brand-new keypair (never signed up) triggers the /signup
+    /// fallback in signin() and can subsequently publish and retrieve a record.
+    ///
+    /// Run with: cargo test --lib transport::tests::test_integration_signup_new_keypair -- --ignored
+    #[test]
+    #[ignore]
+    fn test_integration_signup_new_keypair() {
+        let keypair = pkarr::Keypair::random(); // Brand-new keypair, never registered
+        let pubkey_z32 = keypair.public_key().to_z32();
+
+        let client = HomeserverClient::new("pubky.app", &pubkey_z32).expect("client build failed");
+
+        // signin() should trigger the /signup fallback for a new keypair
+        client.signin(&keypair).expect("signin (with signup fallback) should succeed for new keypair");
+        assert!(client.signed_in.get(), "signed_in should be true after signup");
+
+        // Build and publish a record
+        let signable = HandoffRecordSignable {
+            blob: "dGVzdA==".to_string(),
+            burn: false,
+            created_at: SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
+            hostname: "signup-integration-test".to_string(),
+            pin_salt: None,
+            project: "/signup-test".to_string(),
+            pubkey: pubkey_z32.clone(),
+            recipient: None,
+            ttl: 3600,
+        };
+        let signature = sign_record(&signable, &keypair).expect("sign_record failed");
+        let record = HandoffRecord {
+            blob: signable.blob,
+            burn: false,
+            created_at: signable.created_at,
+            hostname: signable.hostname,
+            pin_salt: None,
+            project: signable.project,
+            pubkey: signable.pubkey,
+            recipient: None,
+            signature,
+            ttl: signable.ttl,
+        };
+
+        let token = client.publish(&keypair, &record).expect("publish should succeed after signup");
+        assert!(!token.is_empty(), "token should not be empty");
+
+        // Retrieve and verify the round-trip
+        let retrieved = client
+            .get_record(&token, &keypair.public_key())
+            .expect("get_record should succeed");
+        assert_eq!(retrieved.created_at, record.created_at);
+        assert_eq!(retrieved.project, record.project);
+    }
+
+    /// Integration test: cross-user GET via Host header routing.
+    ///
+    /// Verifies that user_b can retrieve user_a's record by using user_a's pubkey
+    /// in the Host header (not embedded in the URL path).
+    ///
+    /// Run with: cargo test --lib transport::tests::test_integration_cross_user_get -- --ignored
+    #[test]
+    #[ignore]
+    fn test_integration_cross_user_get() {
+        let keypair_a = pkarr::Keypair::random();
+        let keypair_b = pkarr::Keypair::random();
+        let pubkey_a_z32 = keypair_a.public_key().to_z32();
+        let pubkey_b_z32 = keypair_b.public_key().to_z32();
+
+        // user_a publishes a self-encrypted record
+        let client_a = HomeserverClient::new("pubky.app", &pubkey_a_z32).expect("client_a build failed");
+        client_a.signin(&keypair_a).expect("user_a signin should succeed");
+
+        let created_at = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let signable = HandoffRecordSignable {
+            blob: "dGVzdA==".to_string(),
+            burn: false,
+            created_at,
+            hostname: "cross-user-test".to_string(),
+            pin_salt: None,
+            project: "/cross-user".to_string(),
+            pubkey: pubkey_a_z32.clone(),
+            recipient: None,
+            ttl: 3600,
+        };
+        let signature = sign_record(&signable, &keypair_a).expect("sign_record failed");
+        let record_a = HandoffRecord {
+            blob: signable.blob,
+            burn: false,
+            created_at: signable.created_at,
+            hostname: signable.hostname,
+            pin_salt: None,
+            project: signable.project,
+            pubkey: signable.pubkey,
+            recipient: None,
+            signature,
+            ttl: signable.ttl,
+        };
+        let token = client_a.publish(&keypair_a, &record_a).expect("user_a publish should succeed");
+
+        // user_b retrieves user_a's record via get_record_by_pubkey (Host header routing)
+        let client_b = HomeserverClient::new("pubky.app", &pubkey_b_z32).expect("client_b build failed");
+        let retrieved = client_b
+            .get_record_by_pubkey(&pubkey_a_z32, &token, &keypair_a.public_key())
+            .expect("cross-user get_record_by_pubkey should succeed via Host header routing");
+
+        // Verify the record metadata matches (cannot decrypt — it's self-encrypted by user_a)
+        assert_eq!(retrieved.created_at, record_a.created_at);
+        assert_eq!(retrieved.pubkey, pubkey_a_z32);
+        assert_eq!(retrieved.project, record_a.project);
     }
 }
