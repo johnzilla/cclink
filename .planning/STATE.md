@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-22)
 
 **Core value:** Effortless, secure session handoff between devices: `cclink` on one machine, `cclink pickup` on another, you're back in your session.
-**Current focus:** Phase 10 in progress — Pubky Homeserver Transport Fix
+**Current focus:** Phase 10 complete — Pubky Homeserver Transport Fix done
 
 ## Current Position
 
 Phase: 10 of 10 (Pubky Homeserver Transport Fix)
-Plan: 1 of 2 complete
-Status: Phase 10 in progress — 10-01 done
-Last activity: 2026-02-22 — 10-01 complete (Host header on all requests, signup fallback, cross-user Host routing)
+Plan: 2 of 2 complete
+Status: Phase 10 COMPLETE — all transport fixes applied, test suite clean, clippy clean
+Last activity: 2026-02-22 — 10-02 complete (list parsing tests, clippy -D warnings clean, full test suite 62 tests)
 
-Progress: [██████████] ~95% (transport fix in progress)
+Progress: [██████████] 100% (v1.1 complete)
 
 ## Performance Metrics
 
@@ -42,7 +42,7 @@ Progress: [██████████] ~95% (transport fix in progress)
 | 7. Code Quality and Transport | 2/2 | Complete |
 | 8. CLI Fixes and Documentation | 1/1 | Complete |
 | 9. PIN-Protected Handoffs | 2/2 | Complete |
-| 10. Pubky Homeserver Transport Fix | 1/2 | In Progress |
+| 10. Pubky Homeserver Transport Fix | 2/2 | Complete |
 
 ## Accumulated Context
 
@@ -96,6 +96,8 @@ Phase 10 decisions (10-01):
 - get_latest() uses /pub/cclink/latest with Host header for both self and cross-user
 - Signup 409 conflict triggers retry of /session with fresh token (race condition handling)
 - Command callers (publish/pickup/list/revoke) updated in 10-01 due to compile-time signature change
+- [Phase 10]: parse_record_tokens() is #[cfg(test)]-only helper — parsing logic duplicated from list_record_tokens() for testability without production code extraction
+- [Phase 10]: Pre-existing clippy warnings fixed in-plan because success criteria requires cargo clippy -D warnings clean build
 
 ### Roadmap Evolution
 
@@ -114,5 +116,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 10-01-PLAN.md (Host header on all requests, signup fallback, cross-user Host routing)
+Stopped at: Completed 10-02-PLAN.md (list parsing tests, clippy -D warnings clean, full test suite)
 Resume file: None
