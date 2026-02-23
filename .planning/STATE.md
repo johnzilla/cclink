@@ -2,54 +2,23 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-22)
+See: .planning/PROJECT.md (updated 2026-02-23)
 
 **Core value:** Effortless, secure session handoff between devices: `cclink` on one machine, `cclink pickup` on another, you're back in your session.
-**Current focus:** v1.1 shipped -- planning next milestone
+**Current focus:** v1.2 Dependency Audit & Code Quality
 
 ## Current Position
 
-Phase: 10 of 10 (all complete)
-Status: v1.1 milestone shipped and archived
-Last activity: 2026-02-22 -- v1.1 milestone completion
-
-Progress: [██████████] 100% (v1.0 + v1.1 shipped)
-
-## Performance Metrics
-
-**Velocity (v1.0):**
-- Total plans completed: 14
-- Total execution time: 2 days
-
-**Velocity (v1.1):**
-- Total plans completed: 9
-- Total execution time: 1 day
-
-**By Phase (v1.0):**
-
-| Phase | Plans | Status |
-|-------|-------|--------|
-| 1. Foundation | 2 | Complete |
-| 2. Crypto and Transport | 3 | Complete |
-| 3. Core Commands | 4 | Complete |
-| 4. Adv. Encryption | 3 | Complete |
-| 5. Release | 2 | Complete |
-
-**By Phase (v1.1):**
-
-| Phase | Plans | Status |
-|-------|-------|--------|
-| 6. Signed Record Format | 2 | Complete |
-| 7. Code Quality and Transport | 2 | Complete |
-| 8. CLI Fixes and Documentation | 1 | Complete |
-| 9. PIN-Protected Handoffs | 2 | Complete |
-| 10. Pubky Homeserver Transport Fix | 2 | Complete |
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-23 — Milestone v1.2 started
 
 ## Accumulated Context
 
 ### Decisions
 
-Key decisions from both milestones are documented in PROJECT.md Key Decisions table.
+Key decisions from v1.0 and v1.1 are documented in PROJECT.md Key Decisions table.
 
 ### Roadmap Evolution
 
@@ -63,11 +32,6 @@ None.
 
 ### Blockers/Concerns
 
+- `ed25519-dalek = "=3.0.0-pre.5"` — pre-release crypto dependency, may be constrained by pkarr 5.0.3
 - QR code content wrong when --share + --qr combined (minor tech debt)
-- Cargo.toml/install.sh placeholder `user/cclink` repo path -- must fix before next release
-
-## Session Continuity
-
-Last session: 2026-02-22
-Stopped at: v1.1 milestone archived
-Resume file: None
+- Cargo.toml/install.sh placeholder `user/cclink` repo path — must fix before next release

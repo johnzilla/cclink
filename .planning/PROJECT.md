@@ -45,7 +45,24 @@ Effortless, secure session handoff between devices: `cclink` on one machine, `cc
 
 ### Active
 
-(None -- next milestone will define new requirements)
+<!-- v1.2 Dependency Audit & Code Quality -->
+
+- [ ] Audit and upgrade ed25519-dalek from pre-release (=3.0.0-pre.5)
+- [ ] Add cargo clippy and cargo audit to CI pipeline
+- [ ] Enforce minimum PIN length at publish time
+- [ ] Fix placeholder `user/cclink` repo paths in Cargo.toml and install.sh
+- [ ] Remove dead LatestPointer code from DHT migration
+- [ ] Fix QR code content when --share + --qr combined
+
+## Current Milestone: v1.2 Dependency Audit & Code Quality
+
+**Goal:** Address code review findings — audit crypto dependencies, harden CI, enforce PIN strength, and clean up tech debt.
+
+**Target features:**
+- Investigate and resolve ed25519-dalek pre-release pinning
+- Add cargo clippy and cargo audit to CI
+- Enforce minimum PIN length/complexity
+- Fix known tech debt (placeholder paths, dead code, QR+share bug)
 
 ### Out of Scope
 
@@ -99,4 +116,4 @@ Tech stack: Rust, pkarr 5.0.3 (Mainline DHT), age (X25519), clap, owo-colors, co
 | skip_serializing_if on defaults | Saves ~71 bytes in common case for SignedPacket budget | ✓ Good |
 
 ---
-*Last updated: 2026-02-22 after v1.1 milestone*
+*Last updated: 2026-02-23 after v1.2 milestone start*
