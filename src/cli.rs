@@ -52,7 +52,7 @@ pub struct InitArgs {
     pub import: Option<String>,
 
     /// Homeserver public key to associate with this keypair
-    #[arg(long, default_value = "8um71us3fyw6h8wbcxb5ar3rwusy1a6u49956ikzojg3gcwd1dty")]
+    #[arg(long, default_value = "ufibwbmed6jeq9k4p583go95wofakh9fwpp4k734trq79pd9u1uy")]
     pub homeserver: String,
 
     /// Skip overwrite confirmation prompt

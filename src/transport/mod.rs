@@ -348,7 +348,7 @@ mod tests {
         let keypair = fixed_keypair();
         let pubkey_z32 = keypair.public_key().to_z32();
         let client = HomeserverClient::new(
-            "8um71us3fyw6h8wbcxb5ar3rwusy1a6u49956ikzojg3gcwd1dty",
+            "ufibwbmed6jeq9k4p583go95wofakh9fwpp4k734trq79pd9u1uy",
             &pubkey_z32,
         );
         assert!(
@@ -362,7 +362,7 @@ mod tests {
         let keypair = fixed_keypair();
         let pubkey_z32 = keypair.public_key().to_z32();
         let client = HomeserverClient::new(
-            "8um71us3fyw6h8wbcxb5ar3rwusy1a6u49956ikzojg3gcwd1dty",
+            "ufibwbmed6jeq9k4p583go95wofakh9fwpp4k734trq79pd9u1uy",
             &pubkey_z32,
         )
         .expect("should succeed");
@@ -377,7 +377,7 @@ mod tests {
         let keypair = fixed_keypair();
         let pubkey_z32 = keypair.public_key().to_z32();
         let client = HomeserverClient::new(
-            "8um71us3fyw6h8wbcxb5ar3rwusy1a6u49956ikzojg3gcwd1dty",
+            "ufibwbmed6jeq9k4p583go95wofakh9fwpp4k734trq79pd9u1uy",
             &pubkey_z32,
         )
         .expect("client build failed");
@@ -458,7 +458,7 @@ mod tests {
         let json_bytes = serde_json::to_vec(&record).expect("serialize failed");
 
         let client = HomeserverClient::new(
-            "8um71us3fyw6h8wbcxb5ar3rwusy1a6u49956ikzojg3gcwd1dty",
+            "ufibwbmed6jeq9k4p583go95wofakh9fwpp4k734trq79pd9u1uy",
             &pubkey_z32,
         )
         .expect("client build failed");
@@ -512,7 +512,7 @@ mod tests {
 
         let json_bytes = serde_json::to_vec(&record).expect("serialize failed");
         let client = HomeserverClient::new(
-            "8um71us3fyw6h8wbcxb5ar3rwusy1a6u49956ikzojg3gcwd1dty",
+            "ufibwbmed6jeq9k4p583go95wofakh9fwpp4k734trq79pd9u1uy",
             &pubkey_a_z32,
         )
         .expect("client build failed");
@@ -534,7 +534,7 @@ mod tests {
         let pubkey_z32 = keypair.public_key().to_z32();
 
         let client = HomeserverClient::new(
-            "8um71us3fyw6h8wbcxb5ar3rwusy1a6u49956ikzojg3gcwd1dty",
+            "ufibwbmed6jeq9k4p583go95wofakh9fwpp4k734trq79pd9u1uy",
             &pubkey_z32,
         )
         .expect("client build failed");
@@ -593,7 +593,7 @@ mod tests {
         let pubkey_z32 = keypair.public_key().to_z32();
 
         let client = HomeserverClient::new(
-            "8um71us3fyw6h8wbcxb5ar3rwusy1a6u49956ikzojg3gcwd1dty",
+            "ufibwbmed6jeq9k4p583go95wofakh9fwpp4k734trq79pd9u1uy",
             &pubkey_z32,
         )
         .expect("client build failed");
@@ -658,7 +658,7 @@ mod tests {
         let pubkey_b_z32 = keypair_b.public_key().to_z32();
 
         let client_a = HomeserverClient::new(
-            "8um71us3fyw6h8wbcxb5ar3rwusy1a6u49956ikzojg3gcwd1dty",
+            "ufibwbmed6jeq9k4p583go95wofakh9fwpp4k734trq79pd9u1uy",
             &pubkey_a_z32,
         )
         .expect("client_a build failed");
@@ -699,7 +699,7 @@ mod tests {
             .expect("user_a publish should succeed");
 
         let client_b = HomeserverClient::new(
-            "8um71us3fyw6h8wbcxb5ar3rwusy1a6u49956ikzojg3gcwd1dty",
+            "ufibwbmed6jeq9k4p583go95wofakh9fwpp4k734trq79pd9u1uy",
             &pubkey_b_z32,
         )
         .expect("client_b build failed");

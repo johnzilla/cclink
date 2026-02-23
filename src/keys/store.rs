@@ -66,7 +66,7 @@ pub fn write_homeserver(homeserver: &str) -> anyhow::Result<()> {
 }
 
 pub fn read_homeserver() -> anyhow::Result<String> {
-    let default_pk = "8um71us3fyw6h8wbcxb5ar3rwusy1a6u49956ikzojg3gcwd1dty";
+    let default_pk = "ufibwbmed6jeq9k4p583go95wofakh9fwpp4k734trq79pd9u1uy";
     let path = homeserver_path()?;
     if !path.exists() {
         return Ok(default_pk.to_string());
