@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-22)
 
 **Core value:** Effortless, secure session handoff between devices: `cclink` on one machine, `cclink pickup` on another, you're back in your session.
-**Current focus:** Phase 9 complete — v1.1 complete
+**Current focus:** Phase 10 in progress — Pubky Homeserver Transport Fix
 
 ## Current Position
 
-Phase: 9 of 9 (PIN-Protected Handoffs)
-Plan: 2 of 2 complete
-Status: Phase 9 complete — all plans done
-Last activity: 2026-02-22 — 09-02 complete (--pin CLI flag, publish/pickup PIN flow, integration tests)
+Phase: 10 of 10 (Pubky Homeserver Transport Fix)
+Plan: 1 of 2 complete
+Status: Phase 10 in progress — 10-01 done
+Last activity: 2026-02-22 — 10-01 complete (Host header on all requests, signup fallback, cross-user Host routing)
 
-Progress: [██████████] ~100% (v1.1 complete)
+Progress: [██████████] ~95% (transport fix in progress)
 
 ## Performance Metrics
 
@@ -42,6 +42,7 @@ Progress: [██████████] ~100% (v1.1 complete)
 | 7. Code Quality and Transport | 2/2 | Complete |
 | 8. CLI Fixes and Documentation | 1/1 | Complete |
 | 9. PIN-Protected Handoffs | 2/2 | Complete |
+| 10. Pubky Homeserver Transport Fix | 1/2 | In Progress |
 
 ## Accumulated Context
 
@@ -89,6 +90,13 @@ v1.1 phase 9 decisions (09-02):
 - Non-interactive guard on pickup: bail with clear message when pin_salt present but stdin is not a terminal
 - #[allow(dead_code)] annotations removed from pin_derive_key/pin_encrypt/pin_decrypt — wired to binary
 
+Phase 10 decisions (10-01):
+- Host header on every HTTP request — standard Host header sufficient (no pubky-host fallback needed)
+- get_record_by_pubkey() uses URL /pub/cclink/{token} with Host: {target_pubkey_z32} (not /{pubkey}/pub/cclink/{token})
+- get_latest() uses /pub/cclink/latest with Host header for both self and cross-user
+- Signup 409 conflict triggers retry of /session with fresh token (race condition handling)
+- Command callers (publish/pickup/list/revoke) updated in 10-01 due to compile-time signature change
+
 ### Roadmap Evolution
 
 - Phase 10 added: Pubky Homeserver Transport Fix (FUNC-04) — discovered during Phase 9 UAT that transport layer uses wrong API convention (missing Host header, no signup flow, wrong cross-user URL format, wrong list parsing)
@@ -99,12 +107,12 @@ None.
 
 ### Blockers/Concerns
 
-- HomeserverClient URL routing for multi-tenant PUT needs empirical verification against live pubky.app → CONFIRMED BROKEN: Phase 10 created to fix
+- HomeserverClient URL routing for multi-tenant PUT needs empirical verification against live pubky.app → FIXED in 10-01 (Host header, signup fallback, correct cross-user routing)
 - QR code content wrong when --share + --qr combined (minor tech debt, not in v1.1 scope)
 - Cargo.toml/install.sh placeholder `user/cclink` repo path — must fix before next release
 
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 09-02-PLAN.md (--pin CLI flag, publish/pickup PIN flow, integration tests) — v1.1 complete
+Stopped at: Completed 10-01-PLAN.md (Host header on all requests, signup fallback, cross-user Host routing)
 Resume file: None
