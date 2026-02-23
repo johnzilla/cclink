@@ -41,12 +41,10 @@ pub fn run_revoke(args: crate::cli::RevokeArgs) -> anyhow::Result<()> {
         let x25519_secret = crate::crypto::ed25519_to_x25519_secret(&keypair);
         let identity = crate::crypto::age_identity(&x25519_secret);
         match crate::crypto::age_decrypt(&ciphertext, &identity) {
-            Ok(plaintext) => {
-                match serde_json::from_slice::<crate::record::Payload>(&plaintext) {
-                    Ok(payload) => payload.project,
-                    Err(_) => record.project.clone(),
-                }
-            }
+            Ok(plaintext) => match serde_json::from_slice::<crate::record::Payload>(&plaintext) {
+                Ok(payload) => payload.project,
+                Err(_) => record.project.clone(),
+            },
             Err(_) => "(encrypted)".to_string(),
         }
     };
@@ -55,10 +53,7 @@ pub fn run_revoke(args: crate::cli::RevokeArgs) -> anyhow::Result<()> {
     let skip_confirm = args.yes || !std::io::stdin().is_terminal();
     if !skip_confirm {
         let confirmed = dialoguer::Confirm::new()
-            .with_prompt(format!(
-                "Revoke handoff for {}?",
-                project_display
-            ))
+            .with_prompt(format!("Revoke handoff for {}?", project_display))
             .default(false)
             .interact()
             .map_err(|e| anyhow::anyhow!("prompt failed: {}", e))?;

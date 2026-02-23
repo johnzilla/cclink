@@ -1,7 +1,11 @@
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "cclink", version, about = "Hand off a Claude Code session to another machine via PKARR DHT")]
+#[command(
+    name = "cclink",
+    version,
+    about = "Hand off a Claude Code session to another machine via PKARR DHT"
+)]
 pub struct Cli {
     /// Claude Code session ID to publish (auto-discovers most recent if omitted)
     #[arg(value_name = "SESSION_ID")]

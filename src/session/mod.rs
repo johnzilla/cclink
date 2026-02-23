@@ -18,8 +18,7 @@ pub struct SessionInfo {
 /// with (or equals) the canonical form of that path are returned. Sessions
 /// whose project path cannot be canonicalized (stale paths) are skipped.
 pub fn discover_sessions(cwd_filter: Option<&std::path::Path>) -> anyhow::Result<Vec<SessionInfo>> {
-    let home = dirs::home_dir()
-        .ok_or_else(|| anyhow::anyhow!("Cannot find home directory"))?;
+    let home = dirs::home_dir().ok_or_else(|| anyhow::anyhow!("Cannot find home directory"))?;
     let projects_dir = home.join(".claude/projects");
 
     if !projects_dir.exists() {
@@ -31,9 +30,8 @@ pub fn discover_sessions(cwd_filter: Option<&std::path::Path>) -> anyhow::Result
         .unwrap_or(SystemTime::UNIX_EPOCH);
 
     // Canonicalize the filter path once before the loop
-    let canonical_filter = cwd_filter.map(|p| {
-        std::fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf())
-    });
+    let canonical_filter =
+        cwd_filter.map(|p| std::fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf()));
 
     let mut sessions: Vec<SessionInfo> = Vec::new();
 
@@ -135,7 +133,11 @@ mod tests {
         // We can only safely test this if projects/ is absent on this machine.
         // If it IS present, the function should still return Ok.
         let result = discover_sessions(None);
-        assert!(result.is_ok(), "discover_sessions must return Ok: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "discover_sessions must return Ok: {:?}",
+            result
+        );
     }
 
     #[test]

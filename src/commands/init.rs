@@ -37,8 +37,7 @@ pub fn run_init(args: InitArgs) -> anyhow::Result<()> {
     };
 
     // Step 5: Write keypair atomically
-    store::write_keypair_atomic(&keypair, &secret_key_path)
-        .context("Failed to write keypair")?;
+    store::write_keypair_atomic(&keypair, &secret_key_path).context("Failed to write keypair")?;
 
     // Step 6: Success output
     let pub_key = keypair.public_key();
@@ -117,9 +116,7 @@ fn import_from_stdin(dest_parent: &Path) -> anyhow::Result<pkarr::Keypair> {
     }
 
     // Write to a temp file and use from_secret_key_file to validate (avoids type ambiguity)
-    let parent = dest_parent
-        .parent()
-        .unwrap_or_else(|| Path::new("/tmp"));
+    let parent = dest_parent.parent().unwrap_or_else(|| Path::new("/tmp"));
     let tmp_path = parent.join(".stdin_import.tmp");
 
     std::fs::write(&tmp_path, hex)

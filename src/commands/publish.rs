@@ -72,9 +72,7 @@ pub fn run_publish(cli: &crate::cli::Cli) -> anyhow::Result<()> {
     // ── 3. Display discovered session ─────────────────────────────────────
     println!(
         "Session: {} in {}",
-        session
-            .session_id
-            .if_supports_color(Stdout, |t| t.cyan()),
+        session.session_id.if_supports_color(Stdout, |t| t.cyan()),
         session.project.if_supports_color(Stdout, |t| t.cyan())
     );
 

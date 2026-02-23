@@ -155,7 +155,10 @@ pub fn canonical_json(signable: &HandoffRecordSignable) -> anyhow::Result<String
 ///
 /// Signs the canonical JSON bytes with the Ed25519 private key. The returned string is
 /// suitable for storage in HandoffRecord.signature.
-pub fn sign_record(signable: &HandoffRecordSignable, keypair: &pkarr::Keypair) -> anyhow::Result<String> {
+pub fn sign_record(
+    signable: &HandoffRecordSignable,
+    keypair: &pkarr::Keypair,
+) -> anyhow::Result<String> {
     let json = canonical_json(signable)?;
     let sig = keypair.sign(json.as_bytes());
     let encoded = base64::engine::general_purpose::STANDARD.encode(sig.to_bytes());
@@ -243,7 +246,10 @@ mod tests {
         let ttl_pos = json.find("\"ttl\"").expect("ttl key missing");
 
         assert!(blob_pos < burn_pos, "blob must come before burn");
-        assert!(burn_pos < created_at_pos, "burn must come before created_at");
+        assert!(
+            burn_pos < created_at_pos,
+            "burn must come before created_at"
+        );
         assert!(
             created_at_pos < hostname_pos,
             "created_at must come before hostname"
@@ -252,9 +258,15 @@ mod tests {
             hostname_pos < pin_salt_pos,
             "hostname must come before pin_salt"
         );
-        assert!(pin_salt_pos < project_pos, "pin_salt must come before project");
+        assert!(
+            pin_salt_pos < project_pos,
+            "pin_salt must come before project"
+        );
         assert!(project_pos < pubkey_pos, "project must come before pubkey");
-        assert!(pubkey_pos < recipient_pos, "pubkey must come before recipient");
+        assert!(
+            pubkey_pos < recipient_pos,
+            "pubkey must come before recipient"
+        );
         assert!(recipient_pos < ttl_pos, "recipient must come before ttl");
     }
 
@@ -338,7 +350,10 @@ mod tests {
         };
 
         let result = verify_record(&record, &keypair_b.public_key());
-        assert!(result.is_err(), "verify_record must fail with wrong public key");
+        assert!(
+            result.is_err(),
+            "verify_record must fail with wrong public key"
+        );
 
         let err_str = result.unwrap_err().to_string();
         assert!(
@@ -369,7 +384,10 @@ mod tests {
         };
 
         let result = verify_record(&tampered, &keypair.public_key());
-        assert!(result.is_err(), "verify_record must fail with tampered content");
+        assert!(
+            result.is_err(),
+            "verify_record must fail with tampered content"
+        );
     }
 
     #[test]
@@ -507,11 +525,16 @@ mod size_analysis {
         };
 
         let record_json = serde_json::to_string(&record).expect("serialize record");
-        println!("\nBase HandoffRecord JSON: {} bytes (limit {})", record_json.len(), MAX_JSON);
+        println!(
+            "\nBase HandoffRecord JSON: {} bytes (limit {})",
+            record_json.len(),
+            MAX_JSON
+        );
         assert!(
             record_json.len() <= MAX_JSON,
             "Base HandoffRecord JSON ({} bytes) must fit in {}-byte SignedPacket capacity",
-            record_json.len(), MAX_JSON
+            record_json.len(),
+            MAX_JSON
         );
 
         // Worst realistic case: pin_salt set (--pin)
@@ -524,7 +547,8 @@ mod size_analysis {
         assert!(
             pin_json.len() <= MAX_JSON,
             "HandoffRecord with pin_salt ({} bytes) must fit in {}-byte capacity",
-            pin_json.len(), MAX_JSON
+            pin_json.len(),
+            MAX_JSON
         );
 
         // Worst realistic case: recipient set (--share)
@@ -537,7 +561,8 @@ mod size_analysis {
         assert!(
             share_json.len() <= MAX_JSON,
             "HandoffRecord with recipient ({} bytes) must fit in {}-byte capacity",
-            share_json.len(), MAX_JSON
+            share_json.len(),
+            MAX_JSON
         );
 
         // pin_salt + recipient cannot coexist (--pin conflicts_with --share)
@@ -548,7 +573,10 @@ mod size_analysis {
             ..record.clone()
         };
         let both_json = serde_json::to_string(&record_both).expect("serialize");
-        println!("With both (impossible in practice): {} bytes", both_json.len());
+        println!(
+            "With both (impossible in practice): {} bytes",
+            both_json.len()
+        );
         // This is allowed to exceed MAX_JSON since --pin + --share is CLI-rejected
     }
 
@@ -583,8 +611,17 @@ mod size_analysis {
         };
         let record_json = serde_json::to_string(&record).expect("serialize record");
 
-        assert!(!record_json.contains("macbook-pro-m3"), "hostname must not appear in cleartext");
-        assert!(!record_json.contains("/Users/john/projects"), "project path must not appear in cleartext");
-        assert!(!record_json.contains("3c0a3f7a"), "session ID must not appear in cleartext");
+        assert!(
+            !record_json.contains("macbook-pro-m3"),
+            "hostname must not appear in cleartext"
+        );
+        assert!(
+            !record_json.contains("/Users/john/projects"),
+            "project path must not appear in cleartext"
+        );
+        assert!(
+            !record_json.contains("3c0a3f7a"),
+            "session ID must not appear in cleartext"
+        );
     }
 }

@@ -5,7 +5,7 @@
 //! bytes to avoid type conflicts between curve25519-dalek 4 (age) and
 //! curve25519-dalek 5 (pkarr).
 
-use argon2::{Argon2, Algorithm, Version, Params};
+use argon2::{Algorithm, Argon2, Params, Version};
 use bech32::{ToBase32, Variant};
 use hkdf::Hkdf;
 use rand::Rng;
@@ -28,7 +28,11 @@ pub fn ed25519_to_x25519_secret(keypair: &pkarr::Keypair) -> [u8; 32] {
 /// Uses `VerifyingKey::to_montgomery()` from curve25519-dalek 5 (pkarr's version).
 /// Returns raw bytes — never mix these types with age's curve25519-dalek 4 types.
 pub fn ed25519_to_x25519_public(keypair: &pkarr::Keypair) -> [u8; 32] {
-    keypair.public_key().verifying_key().to_montgomery().to_bytes()
+    keypair
+        .public_key()
+        .verifying_key()
+        .to_montgomery()
+        .to_bytes()
 }
 
 /// Construct an age X25519 Identity from derived secret scalar bytes.
@@ -36,8 +40,12 @@ pub fn ed25519_to_x25519_public(keypair: &pkarr::Keypair) -> [u8; 32] {
 /// Bech32-encodes the scalar with the "age-secret-key-" HRP as required by
 /// the age x25519 format, then parses the string into an Identity.
 pub fn age_identity(x25519_secret: &[u8; 32]) -> age::x25519::Identity {
-    let encoded = bech32::encode("age-secret-key-", x25519_secret.to_base32(), Variant::Bech32)
-        .expect("bech32 encode is infallible for fixed-length input");
+    let encoded = bech32::encode(
+        "age-secret-key-",
+        x25519_secret.to_base32(),
+        Variant::Bech32,
+    )
+    .expect("bech32 encode is infallible for fixed-length input");
     // age parses the identity case-insensitively; uppercase is the canonical form
     encoded
         .to_ascii_uppercase()
@@ -74,9 +82,13 @@ pub fn recipient_from_z32(z32: &str) -> anyhow::Result<age::x25519::Recipient> {
 /// Returns the full age ciphertext including the age header (which contains
 /// the ephemeral public key). The complete blob must be stored and passed
 /// intact to `age_decrypt`. Do not strip or truncate the header.
-pub fn age_encrypt(plaintext: &[u8], recipient: &age::x25519::Recipient) -> anyhow::Result<Vec<u8>> {
-    let encryptor = age::Encryptor::with_recipients(std::iter::once(recipient as &dyn age::Recipient))
-        .expect("non-empty recipients list");
+pub fn age_encrypt(
+    plaintext: &[u8],
+    recipient: &age::x25519::Recipient,
+) -> anyhow::Result<Vec<u8>> {
+    let encryptor =
+        age::Encryptor::with_recipients(std::iter::once(recipient as &dyn age::Recipient))
+            .expect("non-empty recipients list");
     let mut ciphertext = vec![];
     let mut writer = encryptor.wrap_output(&mut ciphertext)?;
     writer.write_all(plaintext)?;
@@ -182,7 +194,10 @@ mod tests {
         let keypair = fixed_keypair();
         let scalar1 = ed25519_to_x25519_secret(&keypair);
         let scalar2 = ed25519_to_x25519_secret(&keypair);
-        assert_eq!(scalar1, scalar2, "same keypair must produce same X25519 scalar");
+        assert_eq!(
+            scalar1, scalar2,
+            "same keypair must produce same X25519 scalar"
+        );
         assert_eq!(scalar1.len(), 32, "scalar must be 32 bytes");
         // Must not be all zeros (would be a degenerate key)
         assert_ne!(scalar1, [0u8; 32], "scalar must not be all zeros");
@@ -193,7 +208,10 @@ mod tests {
         let keypair = fixed_keypair();
         let point1 = ed25519_to_x25519_public(&keypair);
         let point2 = ed25519_to_x25519_public(&keypair);
-        assert_eq!(point1, point2, "same keypair must produce same Montgomery point");
+        assert_eq!(
+            point1, point2,
+            "same keypair must produce same Montgomery point"
+        );
         assert_eq!(point1.len(), 32, "Montgomery point must be 32 bytes");
         assert_ne!(point1, [0u8; 32], "Montgomery point must not be all zeros");
     }
@@ -210,7 +228,10 @@ mod tests {
         let ciphertext = age_encrypt(plaintext, &recipient).expect("encrypt should succeed");
         let decrypted = age_decrypt(&ciphertext, &identity).expect("decrypt should succeed");
 
-        assert_eq!(decrypted, plaintext, "decrypted plaintext must match original");
+        assert_eq!(
+            decrypted, plaintext,
+            "decrypted plaintext must match original"
+        );
     }
 
     #[test]
@@ -223,7 +244,10 @@ mod tests {
         let ct1 = age_encrypt(plaintext, &recipient).expect("first encrypt should succeed");
         let ct2 = age_encrypt(plaintext, &recipient).expect("second encrypt should succeed");
 
-        assert_ne!(ct1, ct2, "two encryptions must produce different ciphertext (ephemeral keys)");
+        assert_ne!(
+            ct1, ct2,
+            "two encryptions must produce different ciphertext (ephemeral keys)"
+        );
     }
 
     #[test]
@@ -242,7 +266,10 @@ mod tests {
 
         // Decrypting with wrong key must fail
         let result = age_decrypt(&ciphertext, &identity_b);
-        assert!(result.is_err(), "decryption with wrong key must return an error");
+        assert!(
+            result.is_err(),
+            "decryption with wrong key must return an error"
+        );
     }
 
     #[test]
@@ -252,7 +279,8 @@ mod tests {
         let z32 = keypair.public_key().to_z32();
 
         // Convert z32 to recipient — should succeed
-        let recipient = recipient_from_z32(&z32).expect("recipient_from_z32 should succeed with valid z32");
+        let recipient =
+            recipient_from_z32(&z32).expect("recipient_from_z32 should succeed with valid z32");
 
         // Encrypt to the derived recipient
         let plaintext = b"round-trip test";
@@ -263,13 +291,19 @@ mod tests {
         let identity = age_identity(&secret);
         let decrypted = age_decrypt(&ciphertext, &identity).expect("decrypt should succeed");
 
-        assert_eq!(decrypted, plaintext, "decrypted plaintext must match original");
+        assert_eq!(
+            decrypted, plaintext,
+            "decrypted plaintext must match original"
+        );
     }
 
     #[test]
     fn test_recipient_from_z32_invalid_key() {
         let result = recipient_from_z32("not-a-valid-z32-key");
-        assert!(result.is_err(), "recipient_from_z32 must return Err for invalid z32 key");
+        assert!(
+            result.is_err(),
+            "recipient_from_z32 must return Err for invalid z32 key"
+        );
 
         let err_str = result.unwrap_err().to_string();
         assert!(
@@ -296,9 +330,14 @@ mod tests {
     fn test_pin_derive_key_different_pins_produce_different_keys() {
         // Different PINs with the same salt must produce different keys
         let salt = [1u8; 32];
-        let key_1234 = pin_derive_key("1234", &salt).expect("pin_derive_key should succeed for 1234");
-        let key_5678 = pin_derive_key("5678", &salt).expect("pin_derive_key should succeed for 5678");
-        assert_ne!(key_1234, key_5678, "different PINs must produce different keys");
+        let key_1234 =
+            pin_derive_key("1234", &salt).expect("pin_derive_key should succeed for 1234");
+        let key_5678 =
+            pin_derive_key("5678", &salt).expect("pin_derive_key should succeed for 5678");
+        assert_ne!(
+            key_1234, key_5678,
+            "different PINs must produce different keys"
+        );
     }
 
     #[test]
@@ -306,8 +345,10 @@ mod tests {
         // Same PIN with different salts must produce different keys
         let salt_a = [1u8; 32];
         let salt_b = [2u8; 32];
-        let key_a = pin_derive_key("1234", &salt_a).expect("pin_derive_key should succeed for salt_a");
-        let key_b = pin_derive_key("1234", &salt_b).expect("pin_derive_key should succeed for salt_b");
+        let key_a =
+            pin_derive_key("1234", &salt_a).expect("pin_derive_key should succeed for salt_a");
+        let key_b =
+            pin_derive_key("1234", &salt_b).expect("pin_derive_key should succeed for salt_b");
         assert_ne!(key_a, key_b, "different salts must produce different keys");
     }
 
@@ -315,21 +356,30 @@ mod tests {
     fn test_pin_encrypt_decrypt_round_trip() {
         // Encrypt with a PIN, decrypt with the same PIN and returned salt
         let plaintext = b"session-id-abc123";
-        let (ciphertext, salt) = pin_encrypt(plaintext, "1234").expect("pin_encrypt should succeed");
+        let (ciphertext, salt) =
+            pin_encrypt(plaintext, "1234").expect("pin_encrypt should succeed");
         assert!(!ciphertext.is_empty(), "ciphertext must not be empty");
 
-        let decrypted = pin_decrypt(&ciphertext, "1234", &salt).expect("pin_decrypt should succeed with correct PIN");
-        assert_eq!(decrypted, plaintext, "decrypted plaintext must match original");
+        let decrypted = pin_decrypt(&ciphertext, "1234", &salt)
+            .expect("pin_decrypt should succeed with correct PIN");
+        assert_eq!(
+            decrypted, plaintext,
+            "decrypted plaintext must match original"
+        );
     }
 
     #[test]
     fn test_pin_decrypt_wrong_pin_fails() {
         // Decrypting with the wrong PIN must return an error, not a panic or wrong result
         let plaintext = b"session-id-abc123";
-        let (ciphertext, salt) = pin_encrypt(plaintext, "1234").expect("pin_encrypt should succeed");
+        let (ciphertext, salt) =
+            pin_encrypt(plaintext, "1234").expect("pin_encrypt should succeed");
 
         let result = pin_decrypt(&ciphertext, "9999", &salt);
-        assert!(result.is_err(), "pin_decrypt with wrong PIN must return an error");
+        assert!(
+            result.is_err(),
+            "pin_decrypt with wrong PIN must return an error"
+        );
     }
 
     #[test]
@@ -337,7 +387,8 @@ mod tests {
         // The owner's X25519 identity (from Ed25519 keypair) must not be able to decrypt
         // data that was encrypted with a PIN-derived key
         let plaintext = b"session-id-abc123";
-        let (ciphertext, _salt) = pin_encrypt(plaintext, "1234").expect("pin_encrypt should succeed");
+        let (ciphertext, _salt) =
+            pin_encrypt(plaintext, "1234").expect("pin_encrypt should succeed");
 
         // Try to decrypt with a regular Ed25519-derived identity
         let keypair = fixed_keypair();

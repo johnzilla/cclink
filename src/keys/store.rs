@@ -173,7 +173,11 @@ mod tests {
         std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))
             .expect("Failed to set permissions");
         let result = check_key_permissions(&path);
-        assert!(result.is_ok(), "Expected Ok for 0600 permissions, got: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Expected Ok for 0600 permissions, got: {:?}",
+            result
+        );
     }
 
     #[cfg(unix)]
@@ -187,8 +191,7 @@ mod tests {
         let metadata = std::fs::metadata(&path).expect("Failed to read metadata");
         let mode = metadata.permissions().mode() & 0o777;
         assert_eq!(
-            mode,
-            0o600,
+            mode, 0o600,
             "Expected 0600 permissions after atomic write, got {:04o}",
             mode
         );

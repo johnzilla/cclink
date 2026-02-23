@@ -56,7 +56,7 @@ fn parse_decrypted(
 
 /// Run the pickup flow.
 pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
-    use backoff::{retry, ExponentialBackoff, Error as BackoffError};
+    use backoff::{retry, Error as BackoffError, ExponentialBackoff};
 
     // ── 1. Load keypair ──────────────────────────────────────────────────
     let keypair = crate::keys::store::load_keypair()?;
@@ -270,8 +270,11 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
     // ── 8. Launch claude --resume ────────────────────────────────────────
     println!(
         "{}",
-        format!("Resuming session {}...", &session_id[..8.min(session_id.len())])
-            .if_supports_color(Stdout, |t| t.green())
+        format!(
+            "Resuming session {}...",
+            &session_id[..8.min(session_id.len())]
+        )
+        .if_supports_color(Stdout, |t| t.green())
     );
     launch_claude_resume(&session_id)?;
 

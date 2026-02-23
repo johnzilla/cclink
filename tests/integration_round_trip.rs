@@ -54,11 +54,11 @@ fn test_self_encrypt_round_trip() {
 
     let session_id = b"sess-abc123-round-trip-test";
 
-    let ciphertext = age_encrypt(session_id, &recipient)
-        .expect("age_encrypt should succeed for self-encrypt");
+    let ciphertext =
+        age_encrypt(session_id, &recipient).expect("age_encrypt should succeed for self-encrypt");
 
-    let decrypted = age_decrypt(&ciphertext, &identity)
-        .expect("age_decrypt should succeed with own identity");
+    let decrypted =
+        age_decrypt(&ciphertext, &identity).expect("age_decrypt should succeed with own identity");
 
     assert_eq!(
         decrypted.as_slice(),
@@ -80,13 +80,13 @@ fn test_shared_encrypt_round_trip() {
     let recipient = recipient_for(&recipient_kp);
     let session_id = b"sess-shared-recipient-round-trip";
 
-    let ciphertext = age_encrypt(session_id, &recipient)
-        .expect("age_encrypt to recipient key should succeed");
+    let ciphertext =
+        age_encrypt(session_id, &recipient).expect("age_encrypt to recipient key should succeed");
 
     // Recipient can decrypt
     let recipient_identity = identity_for(&recipient_kp);
-    let decrypted = age_decrypt(&ciphertext, &recipient_identity)
-        .expect("recipient should be able to decrypt");
+    let decrypted =
+        age_decrypt(&ciphertext, &recipient_identity).expect("recipient should be able to decrypt");
 
     assert_eq!(
         decrypted.as_slice(),
@@ -120,11 +120,11 @@ fn test_burn_encrypt_round_trip() {
     let session_id = b"sess-burn-after-read-test-xyz789";
 
     // Simulate what publish does when burn=true: encrypt normally to own key
-    let ciphertext = age_encrypt(session_id, &recipient)
-        .expect("age_encrypt should succeed for burn path");
+    let ciphertext =
+        age_encrypt(session_id, &recipient).expect("age_encrypt should succeed for burn path");
 
-    let decrypted = age_decrypt(&ciphertext, &identity)
-        .expect("age_decrypt should succeed for burn path");
+    let decrypted =
+        age_decrypt(&ciphertext, &identity).expect("age_decrypt should succeed for burn path");
 
     assert_eq!(
         decrypted.as_slice(),
@@ -232,8 +232,7 @@ fn test_pin_encrypt_round_trip() {
     let session_id = b"sess-pin-round-trip-test-abc123";
 
     // Encrypt with PIN "1234"
-    let (ciphertext, salt) = pin_encrypt(session_id, "1234")
-        .expect("pin_encrypt should succeed");
+    let (ciphertext, salt) = pin_encrypt(session_id, "1234").expect("pin_encrypt should succeed");
     assert!(!ciphertext.is_empty(), "ciphertext must not be empty");
 
     // Correct PIN decrypts successfully
@@ -263,8 +262,7 @@ fn test_pin_record_owner_cannot_decrypt() {
     let session_id = b"sess-pin-owner-isolation-test";
 
     // Encrypt with PIN "5678"
-    let (ciphertext, salt) = pin_encrypt(session_id, "5678")
-        .expect("pin_encrypt should succeed");
+    let (ciphertext, salt) = pin_encrypt(session_id, "5678").expect("pin_encrypt should succeed");
 
     // Attempt decryption with owner's keypair identity — must fail
     let owner_keypair = keypair_a();

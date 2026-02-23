@@ -36,8 +36,8 @@ fn test_encrypted_blob_contains_no_plaintext_session_id() {
     let recipient = recipient_for(&keypair);
 
     let known_id = "KNOWN-SESSION-ID-abc123-MUST-NOT-APPEAR";
-    let ciphertext = age_encrypt(known_id.as_bytes(), &recipient)
-        .expect("age_encrypt should succeed");
+    let ciphertext =
+        age_encrypt(known_id.as_bytes(), &recipient).expect("age_encrypt should succeed");
 
     // String scan: ciphertext interpreted as lossy UTF-8 must not contain the session ID
     let ct_lossy = String::from_utf8_lossy(&ciphertext);
@@ -48,9 +48,7 @@ fn test_encrypted_blob_contains_no_plaintext_session_id() {
 
     // Byte-window scan: no contiguous window of bytes matches the session ID bytes
     let id_bytes = known_id.as_bytes();
-    let found_in_bytes = ciphertext
-        .windows(id_bytes.len())
-        .any(|w| w == id_bytes);
+    let found_in_bytes = ciphertext.windows(id_bytes.len()).any(|w| w == id_bytes);
     assert!(
         !found_in_bytes,
         "ciphertext bytes must not contain the plaintext session ID byte sequence"
@@ -78,9 +76,7 @@ fn test_shared_encrypted_blob_contains_no_plaintext() {
 
     // Byte-window scan
     let id_bytes = known_id.as_bytes();
-    let found_in_bytes = ciphertext
-        .windows(id_bytes.len())
-        .any(|w| w == id_bytes);
+    let found_in_bytes = ciphertext.windows(id_bytes.len()).any(|w| w == id_bytes);
     assert!(
         !found_in_bytes,
         "shared-encrypt ciphertext bytes must not contain the plaintext session ID byte sequence"
@@ -99,8 +95,8 @@ fn test_base64_encoded_blob_contains_no_plaintext() {
     let recipient = recipient_for(&keypair);
 
     let known_id = "KNOWN-SESSION-ID-abc123-MUST-NOT-APPEAR";
-    let ciphertext = age_encrypt(known_id.as_bytes(), &recipient)
-        .expect("age_encrypt should succeed");
+    let ciphertext =
+        age_encrypt(known_id.as_bytes(), &recipient).expect("age_encrypt should succeed");
 
     // Base64-encode as the publish path does
     let blob = base64::engine::general_purpose::STANDARD.encode(&ciphertext);
@@ -114,9 +110,7 @@ fn test_base64_encoded_blob_contains_no_plaintext() {
     // Also verify the plaintext is not present as UTF-8 bytes inside the base64 string
     let id_bytes = known_id.as_bytes();
     let blob_bytes = blob.as_bytes();
-    let found_in_base64_bytes = blob_bytes
-        .windows(id_bytes.len())
-        .any(|w| w == id_bytes);
+    let found_in_base64_bytes = blob_bytes.windows(id_bytes.len()).any(|w| w == id_bytes);
     assert!(
         !found_in_base64_bytes,
         "base64-encoded blob bytes must not contain the plaintext session ID byte sequence"

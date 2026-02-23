@@ -50,7 +50,9 @@ impl DhtClient {
 
         let signed_packet = pkarr::SignedPacket::builder()
             .txt(
-                CCLINK_LABEL.try_into().map_err(|e| anyhow::anyhow!("invalid label: {}", e))?,
+                CCLINK_LABEL
+                    .try_into()
+                    .map_err(|e| anyhow::anyhow!("invalid label: {}", e))?,
                 txt,
                 DNS_TTL,
             )
@@ -193,11 +195,7 @@ mod tests {
         let txt = pkarr::dns::rdata::TXT::try_from(json.as_str()).expect("TXT::try_from");
 
         let signed_packet = pkarr::SignedPacket::builder()
-            .txt(
-                CCLINK_LABEL.try_into().expect("label"),
-                txt,
-                DNS_TTL,
-            )
+            .txt(CCLINK_LABEL.try_into().expect("label"), txt, DNS_TTL)
             .sign(&keypair)
             .expect("sign");
 
@@ -219,17 +217,12 @@ mod tests {
         let txt = pkarr::dns::rdata::TXT::try_from(json.as_str()).expect("TXT::try_from");
 
         let signed_packet = pkarr::SignedPacket::builder()
-            .txt(
-                CCLINK_LABEL.try_into().expect("label"),
-                txt,
-                DNS_TTL,
-            )
+            .txt(CCLINK_LABEL.try_into().expect("label"), txt, DNS_TTL)
             .sign(&keypair)
             .expect("sign");
 
         let extracted = DhtClient::extract_txt(&signed_packet).expect("extract_txt");
-        let round_tripped: HandoffRecord =
-            serde_json::from_str(&extracted).expect("deserialize");
+        let round_tripped: HandoffRecord = serde_json::from_str(&extracted).expect("deserialize");
 
         assert_eq!(round_tripped.created_at, record.created_at);
         assert_eq!(round_tripped.hostname, record.hostname);
@@ -266,10 +259,7 @@ mod tests {
             .expect("sign empty packet");
 
         let result = DhtClient::extract_txt(&empty_packet);
-        assert!(
-            result.is_err(),
-            "extract_txt should fail on empty packet"
-        );
+        assert!(result.is_err(), "extract_txt should fail on empty packet");
     }
 
     /// Integration test requiring DHT connectivity.
