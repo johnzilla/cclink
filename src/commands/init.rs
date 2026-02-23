@@ -55,7 +55,7 @@ pub fn run_init(args: InitArgs) -> anyhow::Result<()> {
     println!("{}", success_verb);
     println!();
     println!("Public Key:  {}", pub_key.to_uri_string());
-    println!("Homeserver:  {}", args.homeserver);
+    println!("Homeserver:  pk:{}", args.homeserver);
     println!("Key file:    {}", secret_key_path.display());
     println!();
     println!("Next: run 'cclink' to publish your first session handoff.");

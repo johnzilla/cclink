@@ -17,7 +17,7 @@ pub fn run_whoami() -> anyhow::Result<()> {
 
     println!("Public Key:  {}", pubkey_uri);
     println!("Fingerprint: {}", fingerprint);
-    println!("Homeserver:  {}", homeserver);
+    println!("Homeserver:  pk:{}", homeserver);
     println!("Key file:    {}", key_path.display());
     println!();
 

@@ -66,13 +66,19 @@ pub fn write_homeserver(homeserver: &str) -> anyhow::Result<()> {
 }
 
 pub fn read_homeserver() -> anyhow::Result<String> {
+    let default_pk = "8um71us3fyw6h8wbcxb5ar3rwusy1a6u49956ikzojg3gcwd1dty";
     let path = homeserver_path()?;
     if !path.exists() {
-        return Ok("https://pubky.app".to_string());
+        return Ok(default_pk.to_string());
     }
     let content = std::fs::read_to_string(&path)
         .with_context(|| format!("Failed to read homeserver from {}", path.display()))?;
-    Ok(content.trim().to_string())
+    let value = content.trim().to_string();
+    // Migration: old installs stored a URL like "https://pubky.app"
+    if value.starts_with("http") || value.contains('/') {
+        return Ok(default_pk.to_string());
+    }
+    Ok(value)
 }
 
 /// Load the keypair from the default secret key path.

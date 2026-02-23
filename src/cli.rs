@@ -51,8 +51,8 @@ pub struct InitArgs {
     #[arg(long, value_name = "PATH")]
     pub import: Option<String>,
 
-    /// Homeserver URL to associate with this keypair
-    #[arg(long, default_value = "https://pubky.app")]
+    /// Homeserver public key to associate with this keypair
+    #[arg(long, default_value = "8um71us3fyw6h8wbcxb5ar3rwusy1a6u49956ikzojg3gcwd1dty")]
     pub homeserver: String,
 
     /// Skip overwrite confirmation prompt

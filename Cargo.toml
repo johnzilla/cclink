@@ -16,14 +16,14 @@ path = "src/main.rs"
 
 [dependencies]
 pkarr = { version = "5.0.3", default-features = false, features = ["keys"] }
+pubky = "0.6.0"
+tokio = { version = "1", features = ["full"] }
 clap = { version = "4.5", features = ["derive"] }
 anyhow = "1.0"
 thiserror = "2.0"
 dirs = "5"
 arboard = "3.6"
 age = "0.11"
-reqwest = { version = "0.13", default-features = false, features = ["blocking", "cookies", "rustls"] }
-postcard = { version = "1", features = ["alloc"] }
 bech32 = "0.9"
 base64 = "0.22"
 serde = { version = "1.0", features = ["derive"] }
@@ -41,5 +41,4 @@ sha2 = "0.10"
 rand = "0.8"
 
 [dev-dependencies]
-httpmock = "0.8"
 tempfile = "3.25.0"
