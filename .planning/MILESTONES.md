@@ -25,3 +25,28 @@
 
 ---
 
+## v1.1 Security Hardening & Code Review Fixes (Shipped: 2026-02-22)
+
+**Phases:** 6-10 (9 plans) | **Rust LOC:** 2,633 (src) + 590 (tests) | **Timeline:** 1 day
+
+**Delivered:** Comprehensive security hardening: signed metadata envelopes, key permission enforcement, PIN-protected handoffs, structured error handling, and migration from homeserver to direct PKARR Mainline DHT transport with full metadata encryption.
+
+**Key accomplishments:**
+- Ed25519-signed burn and recipient fields with tamper detection (clean break from v1.0)
+- Key file permission enforcement (0600) at load and write time
+- PIN-protected handoffs with Argon2id+HKDF-SHA256 key derivation
+- Structured error handling (CclinkError::RecordNotFound, dead variant cleanup)
+- Replaced homeserver transport with PKARR Mainline DHT (no accounts, no tokens, no signup)
+- Encrypted all sensitive metadata (hostname, project path, session ID) into blob -- zero cleartext metadata on DHT
+
+**Git range:** `49c9586` → `d2b65d3` (97 files, 6,140 insertions, 11,880 deletions)
+
+**Known tech debt:**
+- LatestPointer struct is dead code after DHT migration
+- Age ciphertext size non-deterministic (budget relies on skip_serializing_if)
+- QR code content wrong when `--share` + `--qr` combined
+
+**Archive:** `milestones/v1.1-ROADMAP.md`, `milestones/v1.1-REQUIREMENTS.md`
+
+---
+

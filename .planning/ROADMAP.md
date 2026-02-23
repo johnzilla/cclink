@@ -6,89 +6,36 @@ CCLink ships as a single Rust binary that lets you publish an encrypted Claude C
 
 ## Milestones
 
-- ✅ **v1.0 MVP** — Phases 1-5 (shipped 2026-02-22)
-- 🚧 **v1.1 Security Hardening & Code Review Fixes** — Phases 6-10 (in progress)
+- ✅ **v1.0 MVP** -- Phases 1-5 (shipped 2026-02-22)
+- ✅ **v1.1 Security Hardening & Code Review Fixes** -- Phases 6-10 (shipped 2026-02-22)
 
 ## Phases
 
 <details>
-<summary>✅ v1.0 MVP (Phases 1-5) — SHIPPED 2026-02-22</summary>
+<summary>✅ v1.0 MVP (Phases 1-5) -- SHIPPED 2026-02-22</summary>
 
-- [x] Phase 1: Foundation and Key Management (2/2 plans) — completed 2026-02-22
-- [x] Phase 2: Crypto and Transport (3/3 plans) — completed 2026-02-22
-- [x] Phase 3: Core Commands (4/4 plans) — completed 2026-02-22
-- [x] Phase 4: Advanced Encryption and Management (3/3 plans) — completed 2026-02-22
-- [x] Phase 5: Release and Distribution (2/2 plans) — completed 2026-02-22
+- [x] Phase 1: Foundation and Key Management (2/2 plans) -- completed 2026-02-22
+- [x] Phase 2: Crypto and Transport (3/3 plans) -- completed 2026-02-22
+- [x] Phase 3: Core Commands (4/4 plans) -- completed 2026-02-22
+- [x] Phase 4: Advanced Encryption and Management (3/3 plans) -- completed 2026-02-22
+- [x] Phase 5: Release and Distribution (2/2 plans) -- completed 2026-02-22
 
 Full details: `milestones/v1.0-ROADMAP.md`
 
 </details>
 
-### 🚧 v1.1 Security Hardening & Code Review Fixes (In Progress)
+<details>
+<summary>✅ v1.1 Security Hardening (Phases 6-10) -- SHIPPED 2026-02-22</summary>
 
-**Milestone Goal:** Address all findings from external code review — fix security gaps, resolve functional discrepancies, and improve code quality. Every v1.1 requirement addressed before v1.1 ships.
+- [x] Phase 6: Signed Record Format (2/2 plans) -- completed 2026-02-22
+- [x] Phase 7: Code Quality and Transport (2/2 plans) -- completed 2026-02-22
+- [x] Phase 8: CLI Fixes and Documentation (1/1 plan) -- completed 2026-02-22
+- [x] Phase 9: PIN-Protected Handoffs (2/2 plans) -- completed 2026-02-22
+- [x] Phase 10: Pubky Homeserver Transport Fix (2/2 plans) -- completed 2026-02-22
 
-- [x] **Phase 6: Signed Record Format** — Sign burn and recipient fields; enforce key file permissions (completed 2026-02-22)
-- [x] **Phase 7: Code Quality and Transport** — Structured errors, dead variant removal, lazy signin, list optimization, human_duration dedup (completed 2026-02-22)
-- [x] **Phase 8: CLI Fixes and Documentation** — Mutual exclusion for --burn/--share, correct pickup help text, PRD path cleanup (completed 2026-02-22)
-- [x] **Phase 9: PIN-Protected Handoffs** — New --pin flag with Argon2id+HKDF-derived encryption (completed 2026-02-22)
+Full details: `milestones/v1.1-ROADMAP.md`
 
-## Phase Details
-
-### Phase 6: Signed Record Format
-**Goal**: Handoff records are cryptographically honest — burn and recipient intent is signed into the payload and key permissions are enforced by cclink itself
-**Depends on**: Phase 5 (v1.0 complete)
-**Requirements**: SEC-01, SEC-02
-**Success Criteria** (what must be TRUE):
-  1. A published handoff payload includes burn and recipient fields inside the signed envelope (verifiable in raw record bytes)
-  2. Picking up a v1.1 record that was tampered to flip the burn flag fails signature verification and errors out
-  3. On any cclink operation that loads the key, the code explicitly checks and enforces 0600 permissions rather than relying on pkarr
-  4. Existing v1.0 records (unsigned burn/recipient) expire via TTL without any migration step required
-**Plans:** 2/2 plans complete
-Plans:
-- [ ] 06-01-PLAN.md — Sign burn and recipient into HandoffRecordSignable (TDD)
-- [ ] 06-02-PLAN.md — Enforce 0600 key file permissions on load and write (TDD)
-
-### Phase 7: Code Quality and Transport
-**Goal**: The codebase is clean — no dead error variants, no stringly-typed 404 detection, no duplicated utilities, and the homeserver client reuses sessions for efficient transport
-**Depends on**: Phase 6
-**Requirements**: QUAL-01, QUAL-02, QUAL-03, QUAL-04, FUNC-03
-**Success Criteria** (what must be TRUE):
-  1. `cargo build` produces zero compiler warnings (no unused variant warnings from CclinkError)
-  2. Error handling in pickup and list never matches on the string "404" or "not found" — uses typed CclinkError variants instead
-  3. `cclink list` makes one transport-layer call (`get_all_records`) — individual HTTP fetches are encapsulated in the transport layer (Pubky homeserver has no batch-get endpoint)
-  4. HomeserverClient signs in once per process and reuses the session cookie for subsequent operations
-  5. `human_duration` exists in exactly one place in the codebase (utility module shared by all commands)
-**Plans:** 2/2 plans complete
-Plans:
-- [x] 07-01-PLAN.md — Error cleanup, shared utilities, structured 404 handling (QUAL-01, QUAL-02, QUAL-03)
-- [x] 07-02-PLAN.md — Lazy signin and list optimization (QUAL-04, FUNC-03)
-
-### Phase 8: CLI Fixes and Documentation
-**Goal**: The CLI surface is correct and honest — flag combinations that cannot work are rejected at parse time, help text shows valid commands, and the PRD reflects actual filesystem paths
-**Depends on**: Phase 7
-**Requirements**: FUNC-01, FUNC-02, DOCS-01
-**Success Criteria** (what must be TRUE):
-  1. Running `cclink --burn --share <pubkey>` immediately errors with a clear message before any network call
-  2. The success message after self-publish shows `cclink pickup` (not a raw token) as the retrieval command
-  3. The PRD contains no references to `~/.cclink/` paths — all key storage references say `~/.pubky/`
-**Plans:** 1/1 plans complete
-Plans:
-- [x] 08-01-PLAN.md — CLI flag mutual exclusion, self-publish help text fix, PRD path cleanup (FUNC-01, FUNC-02, DOCS-01)
-
-### Phase 9: PIN-Protected Handoffs
-**Goal**: Users can protect a handoff with a PIN so only the recipient who knows the PIN can decrypt the session ID
-**Depends on**: Phase 8
-**Requirements**: SEC-03
-**Success Criteria** (what must be TRUE):
-  1. Running `cclink --pin` prompts for a PIN and publishes a record encrypted with an Argon2id+HKDF-derived key
-  2. Running `cclink pickup` on a PIN-protected record prompts for the PIN before decryption succeeds
-  3. Providing the wrong PIN during pickup produces a clear decryption failure error (not a panic or silent wrong result)
-  4. A PIN-protected record cannot be decrypted by the owner's keypair alone — the PIN is required
-**Plans:** 2/2 plans complete
-Plans:
-- [ ] 09-01-PLAN.md — PIN key derivation with Argon2id+HKDF and pin_salt record field (TDD)
-- [ ] 09-02-PLAN.md — CLI --pin flag, publish/pickup flow integration, integration tests
+</details>
 
 ## Progress
 
@@ -99,25 +46,8 @@ Plans:
 | 3. Core Commands | v1.0 | 4/4 | Complete | 2026-02-22 |
 | 4. Advanced Encryption and Management | v1.0 | 3/3 | Complete | 2026-02-22 |
 | 5. Release and Distribution | v1.0 | 2/2 | Complete | 2026-02-22 |
-| 6. Signed Record Format | 2/2 | Complete   | 2026-02-22 | - |
-| 7. Code Quality and Transport | 2/2 | Complete    | 2026-02-22 | - |
-| 8. CLI Fixes and Documentation | v1.1 | Complete    | 2026-02-22 | 2026-02-22 |
-| 9. PIN-Protected Handoffs | 2/2 | Complete   | 2026-02-22 | - |
-| 10. Pubky Homeserver Transport Fix | 2/2 | Complete    | 2026-02-23 | - |
-
-### Phase 10: Pubky Homeserver Transport Fix
-**Goal**: The transport layer works correctly against the real Pubky homeserver API — Host header identifies tenants, signup flow handles first-time users, and all CRUD operations succeed against live pubky.app
-**Depends on**: Phase 9
-**Requirements**: FUNC-04
-**Success Criteria** (what must be TRUE):
-  1. POST /session includes Host header with z32-encoded pubkey and succeeds for registered users
-  2. First-time users are automatically signed up via POST /signup when POST /session returns 404
-  3. PUT /pub/cclink/{token} includes Host header and successfully publishes records to pubky.app
-  4. GET cross-user records uses Host header instead of embedding pubkey in URL path
-  5. List parsing correctly handles full pubky:// URI format returned by homeserver directory listings
-  6. Full end-to-end flow works: cclink init -> cclink (publish) -> cclink pickup against live pubky.app
-**Plans:** 2/2 plans complete
-
-Plans:
-- [ ] 10-01-PLAN.md — Host header on all requests, signup fallback, cross-user URL fix
-- [ ] 10-02-PLAN.md — Update command callers, harden list parsing, full test suite
+| 6. Signed Record Format | v1.1 | 2/2 | Complete | 2026-02-22 |
+| 7. Code Quality and Transport | v1.1 | 2/2 | Complete | 2026-02-22 |
+| 8. CLI Fixes and Documentation | v1.1 | 1/1 | Complete | 2026-02-22 |
+| 9. PIN-Protected Handoffs | v1.1 | 2/2 | Complete | 2026-02-22 |
+| 10. Pubky Homeserver Transport Fix | v1.1 | 2/2 | Complete | 2026-02-22 |
