@@ -5,14 +5,31 @@
 See: .planning/PROJECT.md (updated 2026-02-23)
 
 **Core value:** Effortless, secure session handoff between devices: `cclink` on one machine, `cclink pickup` on another, you're back in your session.
-**Current focus:** v1.2 Dependency Audit & Code Quality
+**Current focus:** v1.2 Dependency Audit & Code Quality — Phase 11: Prerequisites
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-02-23 — Milestone v1.2 started
+Phase: 11 of 13 (Prerequisites)
+Plan: — of TBD
+Status: Ready to plan
+Last activity: 2026-02-23 — Roadmap created for v1.2 milestone (phases 11-13)
+
+Progress: [░░░░░░░░░░] 0% (v1.2)
+
+## Performance Metrics
+
+**Velocity (v1.0 + v1.1):**
+- Total plans completed: 18
+- v1.0: 14 plans | v1.1: 4 plans (condensed delivery)
+
+**By Phase:**
+
+| Phase | Milestone | Plans |
+|-------|-----------|-------|
+| 1-5 | v1.0 | 14 |
+| 6-10 | v1.1 | 4 |
+
+*v1.2 metrics will be tracked as plans complete*
 
 ## Accumulated Context
 
@@ -20,11 +37,11 @@ Last activity: 2026-02-23 — Milestone v1.2 started
 
 Key decisions from v1.0 and v1.1 are documented in PROJECT.md Key Decisions table.
 
-### Roadmap Evolution
-
-- Phase 10 was added during v1.1 to fix transport layer issues discovered during Phase 9 UAT
-- Transport was then fully replaced with PKARR Mainline DHT (no homeserver)
-- Metadata encryption added post-phase-10 to prevent DHT metadata leakage
+Recent decisions affecting v1.2:
+- Sequencing: fix clippy/fmt/audit issues locally (Phase 11) before adding CI gates (Phase 12) — avoids red CI on day one
+- DEP-02 (backoff): replace with `backon 1.6.0` or add `audit.toml` ignores — must decide before Phase 11 work begins
+- PIN enforcement: `publish.rs` only (not `pickup.rs`) — backward compatibility for records from older binaries
+- ed25519-dalek: keep `=` exact pin, bump to `=3.0.0-pre.6`, document constraint in Cargo.toml comment
 
 ### Pending Todos
 
@@ -32,6 +49,11 @@ None.
 
 ### Blockers/Concerns
 
-- `ed25519-dalek = "=3.0.0-pre.5"` — pre-release crypto dependency, may be constrained by pkarr 5.0.3
-- QR code content wrong when --share + --qr combined (minor tech debt)
-- Cargo.toml/install.sh placeholder `user/cclink` repo path — must fix before next release
+- DEP-02 scope decision needed: replace `backoff` with `backon` now, or add `audit.toml` ignores and defer? Both unblock Phase 12.
+- Real GitHub username needed for DEBT-01: verify with `git remote -v` before editing Cargo.toml and install.sh (expected: `johnzilla/cclink`).
+
+## Session Continuity
+
+Last session: 2026-02-23
+Stopped at: Roadmap created, phases 11-13 defined, ready to plan Phase 11
+Resume file: None

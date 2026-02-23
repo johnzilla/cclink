@@ -55,21 +55,21 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEP-01 | — | Pending |
-| DEP-02 | — | Pending |
-| CI-01 | — | Pending |
-| CI-02 | — | Pending |
-| CI-03 | — | Pending |
-| CI-04 | — | Pending |
-| PIN-01 | — | Pending |
-| DEBT-01 | — | Pending |
-| DEBT-02 | — | Pending |
+| DEP-01 | Phase 11 | Pending |
+| DEP-02 | Phase 11 | Pending |
+| CI-01 | Phase 11 | Pending |
+| CI-02 | Phase 12 | Pending |
+| CI-03 | Phase 12 | Pending |
+| CI-04 | Phase 12 | Pending |
+| PIN-01 | Phase 13 | Pending |
+| DEBT-01 | Phase 13 | Pending |
+| DEBT-02 | Phase 13 | Pending |
 
 **Coverage:**
 - v1.2 requirements: 9 total
-- Mapped to phases: 0
-- Unmapped: 9
+- Mapped to phases: 9
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-23*
-*Last updated: 2026-02-23 after initial definition*
+*Last updated: 2026-02-23 after roadmap creation (phases 11-13)*
