@@ -97,7 +97,10 @@ Plans:
   3. Entering the wrong passphrase prints "Wrong passphrase" and exits with code 1 (no retry, no ambiguous error)
   4. An existing v1.2 plaintext key file loads without any passphrase prompt in the v1.3 binary
   5. The encrypted key file has 0600 permissions and is written atomically (no partial file left on interrupted write)
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 16-01-PLAN.md -- TDD: encrypted key store layer — write_encrypted_keypair_atomic and format-detecting load_keypair (KEYS-03, KEYS-04, KEYS-06)
+- [ ] 16-02-PLAN.md -- Wire --no-passphrase CLI flag and passphrase prompt into cclink init (KEYS-01, KEYS-02)
 
 ## Progress
 
@@ -118,4 +121,4 @@ Plans:
 | 13. Code Quality and Security | v1.2 | 2/2 | Complete | 2026-02-24 |
 | 14. Memory Zeroization | 2/2 | Complete    | 2026-02-24 | - |
 | 15. Encrypted Key Crypto Layer | 1/1 | Complete    | 2026-02-24 | - |
-| 16. Encrypted Key Storage and CLI Integration | v1.3 | 0/TBD | Not started | - |
+| 16. Encrypted Key Storage and CLI Integration | v1.3 | 0/2 | Not started | - |
