@@ -166,6 +166,107 @@ pub fn check_key_permissions(_path: &Path) -> anyhow::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::crypto::encrypt_key_envelope;
+
+    // ── Encrypted key store tests (Phase 16) ────────────────────────────────
+
+    #[test]
+    fn test_write_encrypted_keypair_atomic_creates_cclinkek_file() {
+        let dir = tempfile::tempdir().expect("Failed to create temp dir");
+        let path = dir.path().join("secret_key");
+        let keypair = pkarr::Keypair::random();
+        let envelope =
+            encrypt_key_envelope(&keypair.secret_key(), "testpass1234").expect("encrypt should succeed");
+        write_encrypted_keypair_atomic(&envelope, &path).expect("write should succeed");
+        let contents = std::fs::read(&path).expect("Failed to read file");
+        assert!(
+            contents.starts_with(b"CCLINKEK"),
+            "File must start with CCLINKEK magic bytes"
+        );
+        assert_eq!(
+            contents, envelope,
+            "File contents must equal the original envelope bytes"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_write_encrypted_keypair_atomic_sets_0600() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().expect("Failed to create temp dir");
+        let path = dir.path().join("secret_key");
+        let keypair = pkarr::Keypair::random();
+        let envelope =
+            encrypt_key_envelope(&keypair.secret_key(), "testpass1234").expect("encrypt should succeed");
+        write_encrypted_keypair_atomic(&envelope, &path).expect("write should succeed");
+        let metadata = std::fs::metadata(&path).expect("Failed to read metadata");
+        let mode = metadata.permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600, "Expected 0600 permissions, got {:04o}", mode);
+    }
+
+    #[test]
+    fn test_load_keypair_format_detection_plaintext() {
+        let dir = tempfile::tempdir().expect("Failed to create temp dir");
+        let path = dir.path().join("secret_key");
+        let keypair = pkarr::Keypair::random();
+        keypair
+            .write_secret_key_file(&path)
+            .expect("Failed to write key file");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))
+                .expect("Failed to set permissions");
+        }
+        let raw_bytes = std::fs::read(&path).expect("Failed to read file");
+        let loaded = load_plaintext_keypair(&raw_bytes).expect("load_plaintext_keypair should succeed");
+        assert_eq!(
+            loaded.public_key().to_z32(),
+            keypair.public_key().to_z32(),
+            "Loaded keypair's public key must match original"
+        );
+    }
+
+    #[test]
+    fn test_load_encrypted_keypair_round_trip() {
+        let keypair = pkarr::Keypair::random();
+        let envelope =
+            encrypt_key_envelope(&keypair.secret_key(), "testpass1234").expect("encrypt should succeed");
+        let loaded = load_encrypted_keypair_with_passphrase(&envelope, "testpass1234")
+            .expect("load_encrypted_keypair_with_passphrase should succeed");
+        assert_eq!(
+            loaded.public_key().to_z32(),
+            keypair.public_key().to_z32(),
+            "Loaded keypair's public key must match original"
+        );
+    }
+
+    #[test]
+    fn test_load_encrypted_keypair_wrong_passphrase() {
+        let keypair = pkarr::Keypair::random();
+        let envelope =
+            encrypt_key_envelope(&keypair.secret_key(), "testpass1234").expect("encrypt should succeed");
+        let result = load_encrypted_keypair_with_passphrase(&envelope, "wrongpass999");
+        assert!(result.is_err(), "Wrong passphrase must return Err (not a panic)");
+    }
+
+    #[test]
+    fn test_load_keypair_format_detection_encrypted() {
+        let keypair = pkarr::Keypair::random();
+        let envelope =
+            encrypt_key_envelope(&keypair.secret_key(), "testpass1234").expect("encrypt should succeed");
+        assert!(
+            envelope.starts_with(b"CCLINKEK"),
+            "Encrypted envelope must start with CCLINKEK magic bytes"
+        );
+        let plaintext = "ab".repeat(32);
+        assert!(
+            !plaintext.as_bytes().starts_with(b"CCLINKEK"),
+            "Plaintext hex must not start with CCLINKEK (no false positive)"
+        );
+    }
+
+    // ── Permission tests (existing) ──────────────────────────────────────────
 
     #[cfg(unix)]
     #[test]
