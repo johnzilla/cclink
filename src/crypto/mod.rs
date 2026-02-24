@@ -13,6 +13,37 @@ use sha2::Sha256;
 use std::io::Write;
 use zeroize::Zeroizing;
 
+// ── CCLINKEK binary envelope constants ──────────────────────────────────────
+// Phase 16 wires these into init/load; suppress dead_code until then.
+
+/// Magic header bytes identifying the CCLINKEK key envelope format.
+#[allow(dead_code)]
+const ENVELOPE_MAGIC: &[u8; 8] = b"CCLINKEK";
+
+/// Current version byte for the CCLINKEK envelope format.
+#[allow(dead_code)]
+const ENVELOPE_VERSION: u8 = 0x01;
+
+/// Fixed header length: 8 magic + 1 version + 4 m_cost + 4 t_cost + 4 p_cost + 32 salt = 53 bytes.
+#[allow(dead_code)]
+const ENVELOPE_HEADER_LEN: usize = 53;
+
+/// HKDF info string for key envelope derivation (distinct from cclink-pin-v1).
+#[allow(dead_code)]
+const KEY_HKDF_INFO: &[u8] = b"cclink-key-v1";
+
+/// Default Argon2id memory cost (64 MB) — stored in envelope header on encryption.
+#[allow(dead_code)]
+const KDF_M_COST: u32 = 65536;
+
+/// Default Argon2id iteration count — stored in envelope header on encryption.
+#[allow(dead_code)]
+const KDF_T_COST: u32 = 3;
+
+/// Default Argon2id parallelism — stored in envelope header on encryption.
+#[allow(dead_code)]
+const KDF_P_COST: u32 = 1;
+
 /// Derive the X25519 secret scalar from an Ed25519 keypair.
 ///
 /// Uses SHA-512(seed)[0..32] via ed25519-dalek's `to_scalar_bytes()`.
@@ -178,6 +209,158 @@ pub fn pin_decrypt(ciphertext: &[u8], pin: &str, salt: &[u8; 32]) -> anyhow::Res
 
     // Decrypt — wrong PIN produces an age decryption error, not a panic
     age_decrypt(ciphertext, &identity)
+}
+
+// ── CCLINKEK binary envelope functions ──────────────────────────────────────
+
+/// Derive a 32-byte key-encryption key from a passphrase and 32-byte salt using Argon2id + HKDF-SHA256.
+///
+/// Accepts Argon2 parameters as arguments so that `decrypt_key_envelope` can pass the
+/// values decoded from the envelope header (enabling forward compatibility on param upgrades).
+/// HKDF info string `b"cclink-key-v1"` domain-separates this derivation from `pin_derive_key`.
+#[allow(dead_code)]
+fn key_derive_key(
+    passphrase: &str,
+    salt: &[u8; 32],
+    m_cost: u32,
+    t_cost: u32,
+    p_cost: u32,
+) -> anyhow::Result<Zeroizing<[u8; 32]>> {
+    let params = Params::new(m_cost, t_cost, p_cost, Some(32))
+        .map_err(|e| anyhow::anyhow!("argon2 params error: {}", e))?;
+    let argon2 = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
+
+    // Hash the passphrase into 32 bytes using the salt; Zeroizing ensures zeroing on drop
+    let mut argon2_output = Zeroizing::new([0u8; 32]);
+    argon2
+        .hash_password_into(passphrase.as_bytes(), salt, argon2_output.as_mut())
+        .map_err(|e| anyhow::anyhow!("argon2 hash error: {}", e))?;
+
+    // Expand via HKDF-SHA256 with domain-separation info; Zeroizing ensures zeroing on drop
+    let hkdf = Hkdf::<Sha256>::new(None, &*argon2_output);
+    let mut okm = Zeroizing::new([0u8; 32]);
+    hkdf.expand(KEY_HKDF_INFO, okm.as_mut())
+        .map_err(|e| anyhow::anyhow!("hkdf expand error: {}", e))?;
+
+    Ok(okm)
+}
+
+/// Encrypt an Ed25519 seed (32 bytes) into a self-describing CCLINKEK binary envelope.
+// Phase 16 wires this into `cclink init`; suppress dead_code until then.
+#[allow(dead_code)]
+///
+/// Generates a random 32-byte salt, derives a key-encryption key from the passphrase
+/// using Argon2id + HKDF-SHA256 (with `"cclink-key-v1"` domain separation), and encrypts
+/// the seed with age. Returns the complete envelope:
+///
+/// ```text
+/// Offset  Size  Field
+/// 0       8     Magic: b"CCLINKEK"
+/// 8       1     Version: 0x01
+/// 9       4     m_cost (Argon2, u32 big-endian)
+/// 13      4     t_cost (Argon2, u32 big-endian)
+/// 17      4     p_cost (Argon2, u32 big-endian)
+/// 21      32    Salt (random bytes)
+/// 53      N     Age ciphertext (variable length)
+/// ```
+pub fn encrypt_key_envelope(seed: &[u8; 32], passphrase: &str) -> anyhow::Result<Vec<u8>> {
+    // Generate a fresh random 32-byte salt
+    let salt: [u8; 32] = rand::thread_rng().gen();
+
+    let m_cost = KDF_M_COST;
+    let t_cost = KDF_T_COST;
+    let p_cost = KDF_P_COST;
+
+    // Derive the key-encryption key from passphrase + salt
+    let kek = key_derive_key(passphrase, &salt, m_cost, t_cost, p_cost)?;
+
+    // Build age Identity from the derived key and get the Recipient
+    let identity = age_identity(&kek);
+    let recipient = identity.to_public();
+
+    // Encrypt the 32-byte seed with age
+    let ciphertext = age_encrypt(seed, &recipient)?;
+
+    // Serialize the binary envelope
+    let mut envelope = Vec::with_capacity(ENVELOPE_HEADER_LEN + ciphertext.len());
+    envelope.extend_from_slice(ENVELOPE_MAGIC);
+    envelope.push(ENVELOPE_VERSION);
+    envelope.extend_from_slice(&m_cost.to_be_bytes());
+    envelope.extend_from_slice(&t_cost.to_be_bytes());
+    envelope.extend_from_slice(&p_cost.to_be_bytes());
+    envelope.extend_from_slice(&salt);
+    envelope.extend_from_slice(&ciphertext);
+
+    Ok(envelope)
+}
+
+/// Decrypt a CCLINKEK binary envelope back to the original 32-byte Ed25519 seed.
+// Phase 16 wires this into key loading; suppress dead_code until then.
+#[allow(dead_code)]
+///
+/// Validates the magic header and version byte, decodes Argon2 parameters from the
+/// envelope header (NOT from hardcoded constants — enables forward compatibility),
+/// re-derives the key-encryption key, and decrypts the age ciphertext.
+///
+/// Returns a clear error (not a panic) when the passphrase is wrong or the envelope
+/// is malformed. The recovered seed is wrapped in `Zeroizing<[u8;32]>` for automatic
+/// zeroing on drop.
+pub fn decrypt_key_envelope(
+    envelope: &[u8],
+    passphrase: &str,
+) -> anyhow::Result<Zeroizing<[u8; 32]>> {
+    // Validate minimum length (full fixed header must be present)
+    if envelope.len() < ENVELOPE_HEADER_LEN {
+        anyhow::bail!(
+            "Invalid key envelope: too short ({} bytes, need {})",
+            envelope.len(),
+            ENVELOPE_HEADER_LEN
+        );
+    }
+
+    // Validate magic bytes
+    if &envelope[..8] != ENVELOPE_MAGIC {
+        anyhow::bail!("Invalid key envelope: wrong magic bytes");
+    }
+
+    // Validate version byte
+    if envelope[8] != ENVELOPE_VERSION {
+        anyhow::bail!("Unsupported key envelope version: {}", envelope[8]);
+    }
+
+    // Decode Argon2 params from header bytes (NOT from constants — forward compat)
+    // Safety: unwrap is safe here because length check above guarantees bytes exist
+    let m_cost = u32::from_be_bytes(envelope[9..13].try_into().unwrap());
+    let t_cost = u32::from_be_bytes(envelope[13..17].try_into().unwrap());
+    let p_cost = u32::from_be_bytes(envelope[17..21].try_into().unwrap());
+
+    // Extract 32-byte salt from header
+    // Safety: unwrap is safe here because length check above guarantees bytes exist
+    let salt: [u8; 32] = envelope[21..53].try_into().unwrap();
+
+    // Age ciphertext is the remainder after the fixed header
+    let ciphertext = &envelope[ENVELOPE_HEADER_LEN..];
+
+    // Re-derive key-encryption key from passphrase + header-decoded params
+    let kek = key_derive_key(passphrase, &salt, m_cost, t_cost, p_cost)?;
+    let identity = age_identity(&kek);
+
+    // Decrypt the seed — map age errors to a user-friendly message (not raw age internals)
+    let plaintext = age_decrypt(ciphertext, &identity)
+        .map_err(|_| anyhow::anyhow!("Wrong passphrase or corrupted key envelope"))?;
+
+    // Validate recovered plaintext is exactly 32 bytes
+    if plaintext.len() != 32 {
+        anyhow::bail!(
+            "Decrypted key envelope has wrong size: {} bytes (expected 32)",
+            plaintext.len()
+        );
+    }
+
+    // Copy into Zeroizing<[u8;32]> — automatically zeroed on drop
+    let mut seed = Zeroizing::new([0u8; 32]);
+    seed.copy_from_slice(&plaintext);
+    Ok(seed)
 }
 
 #[cfg(test)]
@@ -409,8 +592,8 @@ mod tests {
     fn test_key_envelope_round_trip() {
         let seed = [42u8; 32];
         let passphrase = "correct-horse-battery-staple";
-        let blob = encrypt_key_envelope(&seed, passphrase)
-            .expect("encrypt_key_envelope should succeed");
+        let blob =
+            encrypt_key_envelope(&seed, passphrase).expect("encrypt_key_envelope should succeed");
         let recovered = decrypt_key_envelope(&blob, passphrase)
             .expect("decrypt_key_envelope should round-trip");
         assert_eq!(*recovered, seed, "recovered seed must match original");
@@ -423,13 +606,15 @@ mod tests {
             .expect("encrypt_key_envelope should succeed");
         assert_eq!(&blob[..8], b"CCLINKEK", "magic bytes must be CCLINKEK");
         assert_eq!(blob[8], 0x01, "version byte must be 0x01");
-        assert!(blob.len() > 53, "envelope must be longer than 53-byte header");
+        assert!(
+            blob.len() > 53,
+            "envelope must be longer than 53-byte header"
+        );
     }
 
     #[test]
     fn test_key_envelope_params_stored_in_header() {
-        let blob = encrypt_key_envelope(&[1u8; 32], "test")
-            .expect("encrypt should succeed");
+        let blob = encrypt_key_envelope(&[1u8; 32], "test").expect("encrypt should succeed");
         let m_cost = u32::from_be_bytes(blob[9..13].try_into().unwrap());
         let t_cost = u32::from_be_bytes(blob[13..17].try_into().unwrap());
         let p_cost = u32::from_be_bytes(blob[17..21].try_into().unwrap());
@@ -441,8 +626,8 @@ mod tests {
     #[test]
     fn test_key_envelope_wrong_passphrase() {
         let seed = [42u8; 32];
-        let blob = encrypt_key_envelope(&seed, "correct-passphrase")
-            .expect("encrypt should succeed");
+        let blob =
+            encrypt_key_envelope(&seed, "correct-passphrase").expect("encrypt should succeed");
         let result = decrypt_key_envelope(&blob, "wrong-passphrase");
         assert!(result.is_err(), "wrong passphrase must return Err");
         let msg = result.unwrap_err().to_string().to_lowercase();
@@ -457,7 +642,10 @@ mod tests {
     fn test_key_envelope_too_short() {
         let short = vec![0u8; 52];
         let result = decrypt_key_envelope(&short, "passphrase");
-        assert!(result.is_err(), "too-short envelope must return Err, not panic");
+        assert!(
+            result.is_err(),
+            "too-short envelope must return Err, not panic"
+        );
     }
 
     #[test]
@@ -473,8 +661,8 @@ mod tests {
         let salt = [7u8; 32];
         let key_kek = key_derive_key("same-passphrase", &salt, 65536, 3, 1)
             .expect("key derivation should succeed");
-        let pin_key = pin_derive_key("same-passphrase", &salt)
-            .expect("pin derivation should succeed");
+        let pin_key =
+            pin_derive_key("same-passphrase", &salt).expect("pin derivation should succeed");
         assert_ne!(
             *key_kek, *pin_key,
             "key and PIN derivation must produce different keys (domain separation)"
@@ -488,7 +676,10 @@ mod tests {
             .expect("first derivation should succeed");
         let key2 = key_derive_key("my-passphrase", &salt, 65536, 3, 1)
             .expect("second derivation should succeed");
-        assert_eq!(*key1, *key2, "same inputs must produce same key (deterministic)");
+        assert_eq!(
+            *key1, *key2,
+            "same inputs must produce same key (deterministic)"
+        );
         assert_ne!(*key1, [0u8; 32], "derived key must not be all zeros");
     }
 }
