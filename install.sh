@@ -66,10 +66,10 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 # Download binary archive and checksum
 printf "Downloading %s.tar.gz...\n" "$ARTIFACT"
 curl -fsSL -o "${TMP_DIR}/${ARTIFACT}.tar.gz" "${BASE_URL}/${ARTIFACT}.tar.gz"
-curl -fsSL -o "${TMP_DIR}/${ARTIFACT}.tar.gz.sha256" "${BASE_URL}/${ARTIFACT}.tar.gz.sha256"
+curl -fsSL -o "${TMP_DIR}/${ARTIFACT}.sha256" "${BASE_URL}/${ARTIFACT}.sha256"
 
 # SHA256 verification
-EXPECTED=$(awk '{print $1}' "${TMP_DIR}/${ARTIFACT}.tar.gz.sha256")
+EXPECTED=$(awk '{print $1}' "${TMP_DIR}/${ARTIFACT}.sha256")
 
 if command -v sha256sum >/dev/null 2>&1; then
   ACTUAL=$(sha256sum "${TMP_DIR}/${ARTIFACT}.tar.gz" | awk '{print $1}')
