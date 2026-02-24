@@ -44,7 +44,7 @@ Full details: `milestones/v1.1-ROADMAP.md`
 
 - [x] **Phase 11: Prerequisites** - Fix all issues that would cause CI failures before adding enforcement gates
 - [x] **Phase 12: CI Hardening** - Add clippy, audit, and fmt enforcement jobs to the CI pipeline (completed 2026-02-24)
-- [ ] **Phase 13: Code Quality and Security** - Enforce PIN length, remove dead code, fix placeholder paths
+- [x] **Phase 13: Code Quality and Security** - Enforce PIN length, remove dead code, fix placeholder paths (completed 2026-02-24)
 
 ## Phase Details
 
@@ -105,4 +105,4 @@ Plans:
 | 10. Pubky Homeserver Transport Fix | v1.1 | 2/2 | Complete | 2026-02-22 |
 | 11. Prerequisites | v1.2 | Complete    | 2026-02-23 | 2026-02-23 |
 | 12. CI Hardening | 1/1 | Complete    | 2026-02-24 | - |
-| 13. Code Quality and Security | 1/2 | In Progress|  | - |
+| 13. Code Quality and Security | 2/2 | Complete   | 2026-02-24 | - |

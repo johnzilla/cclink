@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-02-23)
 Phase: 13 of 13 (Code Quality and Security)
 Plan: 2 of 2 complete
 Status: Phase complete
-Last activity: 2026-02-24 — Completed 13-02: removed dead LatestPointer code, fixed placeholder repo URLs
+Last activity: 2026-02-24 — Completed 13-01: PIN strength validation with TDD (15 tests); 13-02: dead code removal and repo URL fix
 
 Progress: [██████████] 100% (v1.2)
 
@@ -30,6 +30,7 @@ Progress: [██████████] 100% (v1.2)
 | 6-10 | v1.1 | 4 |
 
 *v1.2 metrics will be tracked as plans complete*
+| Phase 13 P01 | 5 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -61,6 +62,8 @@ Phase 13 Plan 02 decisions (2026-02-24):
 - Scope for user/cclink replacement limited to Cargo.toml and install.sh only — no other files contain the placeholder
 - LatestPointer removed entirely (not just the suppression) — the struct is unused and has no referencing code
 - Dead code deleted on discovery, not suppressed with #[allow(dead_code)]
+- [Phase 13]: PIN validation: eprintln\! + process::exit(1) not anyhow::bail\! — avoids double error line from anyhow's main() error formatter
+- [Phase 13]: validate_pin kept in publish.rs not a new module — single-use, no reuse benefit from extraction
 
 ### Pending Todos
 
@@ -73,5 +76,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 13-02-PLAN.md — removed dead LatestPointer struct, fixed placeholder repo URLs in Cargo.toml and install.sh
+Stopped at: Completed 13-01-PLAN.md — PIN strength validation implemented via TDD (validate_pin with 15 unit tests, wired into run_publish); all verification gates pass
 Resume file: None

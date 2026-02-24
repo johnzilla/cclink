@@ -21,7 +21,7 @@ Requirements for v1.2 Dependency Audit & Code Quality. Each maps to roadmap phas
 
 ### PIN Enforcement
 
-- [ ] **PIN-01**: Enforce minimum 8-character PIN length at publish time with clear error message
+- [x] **PIN-01**: Enforce minimum 8-character PIN length at publish time with clear error message
 
 ### Tech Debt
 
@@ -61,7 +61,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CI-02 | Phase 12 | Complete |
 | CI-03 | Phase 12 | Complete |
 | CI-04 | Phase 12 | Complete |
-| PIN-01 | Phase 13 | Pending |
+| PIN-01 | Phase 13 | Complete |
 | DEBT-01 | Phase 13 | Complete |
 | DEBT-02 | Phase 13 | Complete |
 
