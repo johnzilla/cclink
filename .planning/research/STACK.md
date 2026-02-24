@@ -1,222 +1,173 @@
 # Stack Research
 
-**Domain:** Rust CLI — Dependency audit, CI hardening, ed25519-dalek pre-release management
-**Researched:** 2026-02-23
-**Confidence:** HIGH (pkarr dependency tree verified live via crates.io API; cargo audit run live against the project; CI action versions verified via GitHub)
+**Domain:** Rust CLI — Encrypted key storage at rest and secure memory zeroization (cclink v1.3)
+**Researched:** 2026-02-24
+**Confidence:** HIGH — all versions verified live via crates.io API and Cargo.lock inspection; pkarr 5.0.3 source read directly from registry cache
 
 ---
 
 ## Context: What This Research Covers
 
-This is a **subsequent milestone** research pass. The core stack (pkarr, age, clap, argon2, etc.) is validated and unchanged. This file covers only what is needed for the v1.2 milestone:
+This is a subsequent milestone research pass. The existing stack (pkarr, age, clap, argon2, hkdf, sha2, rand, backon, etc.) is validated and unchanged. This file covers only what is new or changed for v1.3:
 
-1. Whether ed25519-dalek can be upgraded from `=3.0.0-pre.5` to a stable or newer release
-2. What GitHub Action to use for `cargo audit` in CI
-3. How to add `cargo clippy` to CI correctly
-4. The `backoff` unmaintained advisory and its resolution
+1. `zeroize` — secure memory erasure of key material after use
+2. `secrecy` — typed wrapper for secret values with automatic zeroization (optional but worth assessing)
+3. `keyring` — system keystore integration (macOS Keychain / Freedesktop Secret Service)
+4. Encrypted key-at-rest format — whether new crates are needed or existing deps suffice
+
+---
+
+## Key Finding: Two of Three New Capabilities Require Zero New Crates
+
+The project's existing Cargo.lock (as of v1.2) already contains:
+
+- `zeroize 1.8.2` — pulled in transitively by `ed25519-dalek` (optional feature) and `keyring` on Windows
+- `zeroize_derive 1.4.3` — pulled in by `zeroize 1.8.2`
+- `secrecy 0.10.3` — pulled in transitively by `age-core`
+
+Adding `zeroize` and `secrecy` as direct dependencies promotes already-present transitive crates to explicit ones. No new compilation units, no new network fetches, no new security surface.
+
+For encrypted key storage at rest: `argon2`, `hkdf`, `sha2`, `age`, and `rand` are all already direct dependencies. The encryption layer (Argon2id+HKDF+age) is identical to the existing PIN-protected handoff feature. No new crates are needed.
+
+Only `keyring` (system keystore integration) would introduce genuinely new crates.
 
 ---
 
 ## Recommended Stack
 
-### Core Technologies (unchanged from v1.1)
+### New Direct Dependencies (v1.3 additions to Cargo.toml)
 
 | Technology | Version | Purpose | Why Recommended |
 |------------|---------|---------|-----------------|
-| `pkarr` | 5.0.3 | Mainline DHT transport, Ed25519 SignedPackets | Locked. Do not change — v1.2 scope excludes transport changes. |
-| `ed25519-dalek` | `=3.0.0-pre.5` → `=3.0.0-pre.6` | Ed25519 signing (pulled in by pkarr) | See version analysis below. Update pin from pre.5 to pre.6. |
-| `age` | 0.11.x | X25519 encryption | Unchanged. |
-| `argon2` | 0.5 | Argon2id for PIN hashing | Unchanged. |
+| `zeroize` | `1.8.2` | Erase secret key bytes from memory after use | Already in Cargo.lock (transitive). The `derive` feature provides `#[derive(Zeroize, ZeroizeOnDrop)]` for structs holding key material. `ZeroizeOnDrop` ensures erasure even on panic or early return — critical for `[u8; 32]` seed bytes. The RustSec project recommends this crate specifically for crypto key material. |
+| `keyring` | `3.6.3` | System keystore integration (macOS Keychain, Freedesktop Secret Service) | Only stable version with cross-platform support. v3.6.3 released 2025-07-27. v4.x is still pre-release (rc.3 as of 2026-02-01). The `sync-secret-service + crypto-rust` feature set works without async runtime (cclink is fully sync). |
 
-### CI Tooling (new for v1.2)
+### Capabilities Requiring No New Crates
 
-| Tool | Version/Tag | Purpose | Why Recommended |
-|------|-------------|---------|-----------------|
-| `actions-rust-lang/audit` | `v1` (v1.2.7, Jan 2026) | Cargo audit in CI — runs cargo-audit against RustSec advisory DB | The current standard. Actively maintained, creates GitHub issues for vulnerabilities, has configurable ignore list. Supersedes the older `rustsec/audit-check` action. |
-| `cargo clippy` | Bundled with `dtolnay/rust-toolchain@stable` | Lint enforcement | Clippy is pre-installed on GitHub runners with the rust-toolchain action. No separate action needed — run directly with `cargo clippy -- -D warnings`. |
-| `cargo-deny` | Alternative to cargo-audit | Combined license + advisory checking | Not recommended for this project — cargo-audit is simpler and the project has no license complexity. |
+| Capability | Implemented Using | Notes |
+|------------|-------------------|-------|
+| Encrypted key at rest (passphrase-based) | `argon2 0.5` + `hkdf 0.12` + `sha2 0.10` + `age 0.11` + `rand 0.8` | Identical to existing `pin_derive_key` + `pin_encrypt`/`pin_decrypt` in `src/crypto/mod.rs`. Reuse directly. |
+| Passphrase prompting | `dialoguer 0.12` | Already used for `--pin` interactive prompt. |
+| Zeroization of `Vec<u8>` / `[u8; N]` | `zeroize 1.8.2` (see above) | `Zeroize` trait's `.zeroize()` method. Also use `zeroize::Zeroizing<Vec<u8>>` as a drop-wrapper without the derive. |
 
 ---
 
-## The ed25519-dalek Constraint: What Can Be Changed
+## Cargo.toml Changes
 
-### The Hard Constraint
-
-**pkarr 5.0.3 requires `ed25519-dalek = "^3.0.0-pre.1"`.**
-
-This was verified live from the crates.io dependency API. The `^` operator applied to a pre-release version in Cargo semver means: "compatible with 3.0.0-pre.1, at minimum." In practice, Cargo resolves this to the highest available `3.0.0-pre.x` that satisfies the constraint.
-
-**Implication: stable ed25519-dalek 2.2.0 cannot be used.** pkarr 5.0.3 will not resolve against it because `2.x` is a different major version and predates the `3.0.0-pre.1` minimum.
-
-### Why There Is No Stable 3.x
-
-As of 2026-02-23, ed25519-dalek has no stable 3.0.0 release. The 3.x series is entirely pre-release. The latest pre-release is `3.0.0-pre.6` (released 2026-02-04). The latest stable is `2.2.0` (released 2025-07-09).
-
-The project is actively moving toward stable 3.0 — recent pre-releases (pre.3 through pre.6) only updated `rand_core`, `digest`, and `sha2` dependencies, indicating the API is stabilizing.
-
-### Current vs Upgradeable
-
-| Version | Status | Pkarr Compatible | Notes |
-|---------|--------|-----------------|-------|
-| `2.2.0` | Stable | NO | Different major; pkarr requires `^3.0.0-pre.1` |
-| `3.0.0-pre.5` | Pre-release | YES | Current pin in Cargo.toml |
-| `3.0.0-pre.6` | Pre-release | YES | Latest; released 2026-02-04 |
-| `3.0.0` | Does not exist yet | — | No ETA |
-
-### Recommendation: Upgrade Pin to 3.0.0-pre.6
-
-Change Cargo.toml from:
 ```toml
-ed25519-dalek = "=3.0.0-pre.5"
-```
-to:
-```toml
-ed25519-dalek = "=3.0.0-pre.6"
+# Add to [dependencies]
+zeroize = { version = "1.8", features = ["derive"] }
+keyring = { version = "3.6", features = ["apple-native", "sync-secret-service", "crypto-rust"] }
 ```
 
-This is a routine dependency bump within the same API surface. pre.4 through pre.6 only changed downstream crate versions (rand_core, digest, sha2); no API breaks were introduced between pre.5 and pre.6.
+No version conflicts. `zeroize 1.8.2` is already resolved in Cargo.lock. Adding it as a direct dependency with `features = ["derive"]` activates `zeroize_derive` (also already in the lock). Cargo will not re-download or recompile anything already present.
 
-**Do not remove the `=` exact pin.** Without it, Cargo resolves pre-releases non-deterministically and `cargo update` may silently pick a new pre-release that breaks the build. The exact pin is correct practice for pre-releases.
-
-**Note:** `cargo update --dry-run --verbose` confirms that Cargo cannot update ed25519-dalek beyond pre.5 under the current `=` pin, and confirms pre.6 is available. The update from pre.5 to pre.6 requires a manual Cargo.toml edit.
-
-### What Changes in 3.0.0-pre vs 2.x API
-
-The major API break happened at 2.0.0 (already adopted). The 3.0.0-pre.0 changes are:
-- Edition upgraded to 2024, MSRV raised to 1.85
-- `std` feature removed
-- `pkcs8::spki::SignatureAlgorithmIdentifier` replaces `DynSignatureAlgorithmIdentifier`
-- `ed25519` and `signature` dependency versions updated
-
-These are not relevant to cclink, which uses `pkarr::Keypair` as its key type and never calls ed25519-dalek's API directly. The pkarr crate handles all ed25519-dalek interactions internally.
+**`secrecy` assessment — NOT recommended as direct dependency:**
+`secrecy 0.10.3` is already in the lock (via age-core) but adds no capability that `zeroize::Zeroizing<T>` doesn't provide. `Zeroizing<[u8; 32]>` wraps a value and zeroizes on drop. `SecretBox<T>` is heavier and designed for multi-owner scenarios (Arc-based). For cclink's single-owner key material use `Zeroizing<T>` from zeroize directly — simpler and sufficient.
 
 ---
 
-## Cargo Audit CI Integration
+## zeroize Integration Pattern
 
-### Current Audit Status (verified live)
+The three values that must be zeroized after use:
 
-Running `cargo audit` against the current lockfile produces:
+| Value | Type | Where Created | Zeroize How |
+|-------|------|---------------|-------------|
+| Ed25519 seed bytes | `[u8; 32]` from `keypair.secret_key()` | `crypto/mod.rs: ed25519_to_x25519_secret()` | Wrap call site in `Zeroizing<[u8; 32]>` |
+| Argon2id output | `[u8; 32]` in `pin_derive_key()` | `crypto/mod.rs` | `Zeroizing::new([0u8; 32])` as output buffer |
+| HKDF output (`okm`) | `[u8; 32]` in `pin_derive_key()` | `crypto/mod.rs` | Same; `Zeroizing<[u8; 32]>` |
+| Passphrase string | `String` from `dialoguer::Password::interact()` | `commands/publish.rs`, new `commands/init.rs` prompt | `zeroize::Zeroizing<String>` or `.zeroize()` before drop |
 
-```
-Warning: backoff 0.4.0 — RUSTSEC-2025-0012 (unmaintained)
-Warning: instant 0.1.13 — RUSTSEC-2024-0384 (unmaintained)
-```
-
-No vulnerabilities (security errors). Two warnings for unmaintained crates. Both are transitive — `instant` is a transitive dependency of `backoff`.
-
-**`backoff` is a direct dependency** and causes both advisories. The fix is replacing `backoff` with `backon` (see below).
-
-### Recommended GitHub Action
-
-Use `actions-rust-lang/audit@v1` (latest tag: v1.2.7, released January 2026).
-
-```yaml
-- name: Audit Rust dependencies
-  uses: actions-rust-lang/audit@v1
-  with:
-    ignore: ""  # leave empty unless a known-safe advisory needs ignoring
-```
-
-**Why this action over `rustsec/audit-check@v2`:**
-- `actions-rust-lang/audit` is newer (v1.2.7, Jan 2026 vs v2.0.0, Sep 2024)
-- Creates GitHub issues for found vulnerabilities automatically (configurable)
-- Does not require a separate `GITHUB_TOKEN` parameter — defaults to the workflow token
-- Handles the advisory DB fetch internally
-
-### Recommended Workflow Additions to ci.yml
-
-Add two new jobs alongside the existing `test` job:
-
-```yaml
-  audit:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions-rust-lang/audit@v1
-
-  clippy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy --all-targets -- -D warnings
-```
-
-**Why separate jobs:** Audit and clippy failures are independent concerns. Parallel jobs report faster and give clearer failure attribution than a single long job.
-
-**Why `RUSTFLAGS: "-Dwarnings"` is not used:** The official Clippy docs recommend passing `-D warnings` directly to the clippy invocation (`-- -D warnings`) rather than via `RUSTFLAGS`. The `RUSTFLAGS` approach also affects `rustc` itself, which can cause false failures from compiler warnings unrelated to clippy lints.
-
-**Clippy components:** The `dtolnay/rust-toolchain@stable` action supports `components: clippy` to ensure clippy is installed even if the runner image doesn't have it. This prevents silent skips.
-
----
-
-## The backoff Advisory: What to Do
-
-### Advisory Details
-
-- **RUSTSEC-2025-0012**: `backoff` 0.4.0 is unmaintained (issued 2025-03-04)
-- **RUSTSEC-2024-0384**: `instant` 0.1.13 is unmaintained (transitive dep of backoff)
-
-Both are warnings, not vulnerabilities. `cargo audit` exits 0 with these. However, they will generate noise in CI and may escalate if `actions-rust-lang/audit` is configured with `denyWarnings: true`.
-
-### How backoff Is Used
-
+Pattern (no derive needed for `[u8; 32]`):
 ```rust
-// src/commands/pickup.rs
-use backoff::{retry, ExponentialBackoff, Error as BackoffError};
-let backoff_config = ExponentialBackoff {
-    max_elapsed_time: Some(Duration::from_secs(30)),
-    max_interval: Duration::from_secs(8),
-    initial_interval: Duration::from_secs(2),
-    ..Default::default()
-};
-let record = retry(backoff_config, || { ... });
+use zeroize::Zeroizing;
+
+let secret = Zeroizing::new(keypair.secret_key());  // zeroized when `secret` drops
 ```
 
-Simple retry loop with exponential backoff. No async, no tokio integration.
+Pattern with derive (for a custom struct):
+```rust
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
-### Recommended Replacement: backon 1.6.0
+#[derive(Zeroize, ZeroizeOnDrop)]
+struct KeyMaterial {
+    seed: [u8; 32],
+    derived: [u8; 32],
+}
+```
 
-`backon` (v1.6.0, released 2025-10-18) is the standard maintained alternative. It is actively maintained, has no `instant` dependency, and supports both sync and async retry.
+The derive approach is only needed if a struct holds multiple sensitive fields. For cclink's current code, `Zeroizing<T>` at the call site is sufficient and requires no struct changes.
 
-**Migration approach:** Replace the `backoff::retry()` call with `backon`'s closure-based retry builder. The API differs (backon uses a builder pattern: `.retry(ExponentialBuilder::default())`), but the logic is equivalent.
+---
 
-**Alternative — ignore the advisory:** If replacing `backoff` is out of scope for v1.2, add a `.cargo/audit.toml` to suppress the two warnings:
+## Encrypted Key Storage Format
+
+No new crates needed. The file format uses existing primitives:
+
+```
+~/.pubky/secret_key  (current plaintext format)
+  64-char hex string (raw Ed25519 seed)
+
+~/.pubky/secret_key  (encrypted format — replaces plaintext)
+  Line 1: "cclink-encrypted-v1"          (magic header; non-hex, so pkarr rejects it cleanly)
+  Line 2: <base64-encoded 32-byte salt>  (use base64 = 0.22, already in Cargo.toml)
+  Line 3+: <base64-encoded age ciphertext of 32-byte seed>
+```
+
+Detection in `load_keypair()`: if the file starts with `"cclink-encrypted-v1"`, prompt for passphrase and decrypt via `pin_derive_key` + `age_decrypt`. Otherwise treat as legacy plaintext hex (backward compatible).
+
+This mirrors the PIN-protected handoff flow exactly. `pin_derive_key` and `pin_decrypt` from `src/crypto/mod.rs` are reused without modification.
+
+---
+
+## keyring Integration Pattern
 
 ```toml
-[advisories]
-ignore = ["RUSTSEC-2025-0012", "RUSTSEC-2024-0384"]
+# Feature flags needed per platform:
+#   apple-native    → macOS Keychain (uses security-framework)
+#   sync-secret-service + crypto-rust → Linux GNOME Keyring / KWallet via D-Bus (sync, no tokio)
+#   windows-native  → Windows Credential Manager
+# All three features are mutually compatible in 3.6.3 and Cargo handles platform-conditional deps.
+keyring = { version = "3.6", features = ["apple-native", "sync-secret-service", "crypto-rust"] }
 ```
 
-This is appropriate if the CI gate should pass cleanly now and `backoff` replacement is deferred to v1.3. The unmaintained status poses no security risk — it means no future patches, not that it is currently broken or exploitable.
+Usage:
+```rust
+let entry = keyring::Entry::new("cclink", &username)?;
+entry.set_password(&hex_secret_key)?;     // store
+let hex = entry.get_password()?;           // retrieve
+entry.delete_credential()?;               // remove
+```
+
+The keyring crate stores a string value. Store the 64-char hex seed string (same format pkarr's `write_secret_key_file` uses). On retrieval, validate the hex before constructing the keypair.
+
+**Platform reality check:** On Linux, `sync-secret-service` requires D-Bus and a running secret service daemon (GNOME Keyring or KWallet). Headless Linux (CI, servers) will have no secret service. `keyring` returns `NoStorageAccess` in this case. The cclink code must fall back to the encrypted-file format when keyring fails. This is the correct behavior — not an error.
 
 ---
 
 ## Alternatives Considered
 
-| Recommended | Alternative | When to Use Alternative |
-|-------------|-------------|-------------------------|
-| `actions-rust-lang/audit@v1` | `rustsec/audit-check@v2` | Use `audit-check@v2` if you specifically need GitHub check annotation styling rather than issue creation. Both work; `actions-rust-lang/audit` is more recently maintained. |
-| `cargo clippy -- -D warnings` | `RUSTFLAGS="-Dwarnings" cargo clippy` | Use `RUSTFLAGS` only if you also want to deny rustc compiler warnings at the same time. For clippy-only enforcement, pass `-D warnings` to clippy directly. |
-| `backon` 1.6.0 | Ignore RUSTSEC-2025-0012 | Ignore the advisory if the v1.2 scope is tightly constrained. The advisory is "unmaintained," not a security CVE. |
-| `=3.0.0-pre.6` exact pin | Loose `^3.0.0-pre.1` | Loose pin only when you trust all pre-release bumps in the series to be non-breaking. For crypto crates at pre-release, exact pinning is safer. |
+| Recommended | Alternative | Why Not |
+|-------------|-------------|---------|
+| `zeroize 1.8` direct dep | Rely on ed25519-dalek's optional zeroize (not enabled by cclink) | ed25519-dalek's `zeroize` feature only zeroizes inside dalek's types (SigningKey). It does not cover cclink's local `[u8; 32]` copies of seed bytes, argon2 output, or passphrase strings. Must zeroize these explicitly. |
+| `zeroize::Zeroizing<T>` wrapper | `secrecy::SecretBox<T>` | `SecretBox` is Arc-based and designed for shared ownership of secrets. cclink's key material is owned by a single call frame. `Zeroizing<T>` is simpler and sufficient. `secrecy` adds no capability here. |
+| `keyring 3.6.3` (stable) | `keyring 4.0.0-rc.3` | rc.3 released 2026-02-01; still pre-release. The 4.x API restructures backend selection. Use stable 3.6.3 now; upgrade to 4.x when it stabilizes. |
+| `sync-secret-service + crypto-rust` | `async-secret-service + tokio` | cclink is entirely synchronous. Adding tokio for keyring alone would bloat the binary and runtime. Sync D-Bus access is correct. |
+| Argon2id+HKDF+age (existing deps) for key-at-rest | `age::scrypt` passphrase recipient | age has built-in scrypt passphrase encryption. However, cclink already has Argon2id+HKDF implemented and tested for PIN handoffs. Reusing that path keeps the codebase consistent and avoids a new crypto primitive. |
+| Custom `"cclink-encrypted-v1"` file format | JSON envelope | JSON adds serde complexity for a two-field structure (salt + ciphertext). A line-based format with a magic header is simpler and easier to inspect in a hex editor. |
 
 ---
 
-## What NOT to Change
+## What NOT to Add
 
-| Do Not Change | Why |
-|---------------|-----|
-| `pkarr = "5.0.3"` | Stable, tested transport layer. v1.2 scope excludes transport changes. |
-| `age = "0.11"` | Unchanged encryption layer. No advisories. |
-| `argon2 = "0.5"` | PIN hashing. No advisories. |
-| `ed25519-dalek` to stable `2.2.0` | Impossible — pkarr 5.0.3 requires `^3.0.0-pre.1`. |
-| Existing `test` job in ci.yml | Add new jobs; do not modify the passing test job. |
-| `--locked` flag on `cargo test` | The lockfile must remain authoritative. Do not remove `--locked`. |
+| Avoid | Why | Use Instead |
+|-------|-----|-------------|
+| `memzero` / `clear_on_drop` | Unmaintained; zeroize supersedes both | `zeroize 1.8` |
+| `ring` crate for key derivation | Pulls in large C build; argon2+hkdf already present and tested | Existing `argon2 0.5` + `hkdf 0.12` |
+| `age` scrypt passphrase encryption for key-at-rest | Inconsistent with existing PIN flow; would add second KDF strategy | Reuse `pin_derive_key` + `pin_encrypt`/`pin_decrypt` from `crypto/mod.rs` |
+| `keyring 4.0.0-rc.3` | Pre-release; API still in flux | `keyring 3.6.3` |
+| `tokio` | Project is sync; adding async runtime for keyring alone is disproportionate | `sync-secret-service` feature of `keyring 3.6.3` |
+| `memsec` / `secrets` | Niche crates with minimal adoption; zeroize is the ecosystem standard | `zeroize 1.8` |
 
 ---
 
@@ -224,27 +175,26 @@ This is appropriate if the CI gate should pass cleanly now and `backoff` replace
 
 | Package | Compatible With | Notes |
 |---------|-----------------|-------|
-| `pkarr@5.0.3` | `ed25519-dalek@^3.0.0-pre.1` | Verified via crates.io API. pre.5 and pre.6 both satisfy this constraint. |
-| `ed25519-dalek@3.0.0-pre.6` | `curve25519-dalek@5.0.0-pre.6` | pre.6 bumps curve25519-dalek from pre.5 to pre.6. No user-visible API change. |
-| `actions-rust-lang/audit@v1` | Any Rust project with Cargo.lock | No Rust toolchain installation needed; action handles it internally. |
-| `backon@1.6.0` | Rust stable, no-std compatible | Does not depend on `instant`; no async runtime required for sync retry. |
+| `zeroize@1.8.2` | All existing deps | Already in Cargo.lock. No conflicts. `zeroize_derive@1.4.3` also already resolved. |
+| `keyring@3.6.3` | Rust 1.75+ MSRV | Confirmed no async deps with `sync-secret-service` feature. On Linux, `dbus-secret-service@4.0.0-rc.2` is pulled in; not yanked (verified 2026-02-24). |
+| `keyring@3.6.3` | `zeroize@1.8.1+` (zeroize is a direct dep of keyring on Windows) | Exact version `^1.8.1` required by keyring; `1.8.2` already in lock — satisfied. |
+| Encrypted file format | `pkarr::Keypair::from_secret_key_file` | The `"cclink-encrypted-v1"` magic header is not valid hex, so pkarr returns `InvalidData`. `load_keypair()` can catch this error and branch to the decryption path before calling pkarr. No pkarr changes needed. |
 
 ---
 
 ## Sources
 
-- `crates.io/api/v1/crates/pkarr/5.0.3/dependencies` — pkarr 5.0.3 requires `ed25519-dalek ^3.0.0-pre.1` (HIGH confidence, verified live)
-- `crates.io/api/v1/crates/pkarr` — Latest pkarr is 6.0.0-rc.0; stable is 5.0.3 (HIGH confidence, verified live)
-- `crates.io/api/v1/crates/ed25519-dalek` — Latest stable 2.2.0 (Jul 2025); latest pre-release 3.0.0-pre.6 (Feb 2026) (HIGH confidence, verified live)
-- `cargo audit` run live in project — two unmaintained warnings (backoff, instant), zero vulnerabilities (HIGH confidence)
-- `github.com/actions-rust-lang/audit` — v1.2.7, January 2026. Recommended workflow YAML verified (HIGH confidence)
-- `github.com/rustsec/audit-check` — v2.0.0, September 2024. Still maintained but older (HIGH confidence)
-- `doc.rust-lang.org/nightly/clippy/continuous_integration/github_actions.html` — Official Clippy CI recommendation: `cargo clippy --all-targets --all-features` with `-Dwarnings` (HIGH confidence)
-- `crates.io/api/v1/crates/backon` — backon 1.6.0, released 2025-10-18 (HIGH confidence, verified live)
-- `rustsec.org/advisories/RUSTSEC-2025-0012` — backoff unmaintained advisory, issued 2025-03-04 (HIGH confidence)
-- `rustsec.org/advisories/RUSTSEC-2024-0384` — instant unmaintained advisory (HIGH confidence)
-- `cargo update ed25519-dalek --dry-run --verbose` run live — confirms pre.6 is available, current pin blocks the update (HIGH confidence)
+- `crates.io/api/v1/crates/zeroize` — version 1.8.2 confirmed current, published 2025-09-29 (HIGH confidence, verified live)
+- `~/.cargo/registry/src/.../zeroize-1.8.2/Cargo.toml` — features verified: `derive = ["zeroize_derive"]`, `default = ["alloc"]` (HIGH confidence, read directly)
+- `cclink/Cargo.lock` — `zeroize 1.8.2` and `zeroize_derive 1.4.3` already present (transitive); `secrecy 0.10.3` already present via age-core (HIGH confidence, read directly)
+- `crates.io/api/v1/crates/keyring` — version 3.6.3 latest stable (2025-07-27); 4.0.0-rc.3 latest pre-release (2026-02-01) (HIGH confidence, verified live)
+- `github.com/open-source-cooperative/keyring-rs v3.6.3/Cargo.toml` — feature flags `sync-secret-service`, `crypto-rust`, `apple-native`, `windows-native` verified (HIGH confidence, fetched directly)
+- `crates.io/api/v1/crates/dbus-secret-service` — 4.1.0, published 2025-08-26, not yanked (HIGH confidence, verified live)
+- `crates.io/api/v1/crates/secrecy` — 0.10.3, depends on `zeroize ^1.6` (HIGH confidence, verified live)
+- `~/.cargo/registry/src/.../pkarr-5.0.3/src/keys.rs` — `from_secret_key_file` reads hex string, returns `InvalidData` on non-hex input; `write_secret_key_file` writes 64-char hex (HIGH confidence, source read directly)
+- `crates.io/api/v1/crates/secret-service` — 5.1.0 confirmed available for keyring Linux async backend; 4.x used by keyring 3.6.3 (HIGH confidence, verified live)
 
 ---
-*Stack research for: cclink v1.2 — dependency audit and CI hardening*
-*Researched: 2026-02-23*
+
+*Stack research for: cclink v1.3 — encrypted key storage at rest and secure memory zeroization*
+*Researched: 2026-02-24*
