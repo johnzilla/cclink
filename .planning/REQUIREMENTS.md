@@ -18,9 +18,9 @@ Requirements for v1.3 Key Security Hardening. Each maps to roadmap phases.
 
 ### Memory Zeroization
 
-- [ ] **ZERO-01**: Derived X25519 secret scalar is zeroized from memory after use
-- [ ] **ZERO-02**: Decrypted key file bytes are zeroized from memory after parsing
-- [ ] **ZERO-03**: Passphrase and PIN strings from user prompts are zeroized from memory after use
+- [x] **ZERO-01**: Derived X25519 secret scalar is zeroized from memory after use
+- [x] **ZERO-02**: Decrypted key file bytes are zeroized from memory after parsing
+- [x] **ZERO-03**: Passphrase and PIN strings from user prompts are zeroized from memory after use
 
 ## Future Requirements
 
@@ -63,9 +63,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | KEYS-04 | Phase 16 | Pending |
 | KEYS-05 | Phase 15 | Pending |
 | KEYS-06 | Phase 16 | Pending |
-| ZERO-01 | Phase 14 | Pending |
-| ZERO-02 | Phase 14 | Pending |
-| ZERO-03 | Phase 14 | Pending |
+| ZERO-01 | Phase 14 | Complete |
+| ZERO-02 | Phase 14 | Complete |
+| ZERO-03 | Phase 14 | Complete |
 
 **Coverage:**
 - v1.3 requirements: 9 total

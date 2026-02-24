@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-24)
 
 **Core value:** Effortless, secure session handoff between devices: `cclink` on one machine, `cclink pickup` on another, you're back in your session.
-**Current focus:** Phase 14 — Memory Zeroization
+**Current focus:** Phase 15 — Encrypted Key Storage (next)
 
 ## Current Position
 
-Phase: 14 of 16 in v1.3 (Memory Zeroization)
-Plan: 1 of 2 in current phase (14-01 complete)
-Status: In progress
-Last activity: 2026-02-24 — 14-01 complete: Zeroizing wrappers applied to crypto and key store
+Phase: 14 of 16 in v1.3 (Memory Zeroization) — COMPLETE
+Plan: 2 of 2 in current phase (14-02 complete)
+Status: Phase 14 complete — ready for Phase 15
+Last activity: 2026-02-24 — 14-02 complete: Zeroizing wrappers applied to PIN prompt sites in publish.rs and pickup.rs
 
-Progress: [█████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 14% (v1.3 — 1 of 7 plans complete)
+Progress: [█████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 29% (v1.3 — 2 of 7 plans complete)
 
 ## Performance Metrics
 
@@ -22,7 +22,8 @@ Progress: [█████░░░░░░░░░░░░░░░░░░
 - v1.0: 14 plans (Phases 1-5) | 2 days
 - v1.1: 9 plans (Phases 6-10) | 1 day
 - v1.2: 5 plans (Phases 11-13) | 2 days
-- Total: 28 plans across 13 phases
+- v1.3 so far: 2 plans (Phase 14) | <1 day
+- Total: 30 plans across 14 phases
 
 ## Accumulated Context
 
@@ -42,6 +43,10 @@ Key decisions from 14-01:
 - from_secret_key_file calls in init.rs (import path) deferred — outside ZERO-01/ZERO-02 scope
 - [Phase 14-memory-zeroization]: Zeroizing<[u8;32]> as return type for secret derivation — auto-deref enables no-change callers
 
+Key decisions from 14-02:
+- Wrap at the interact() call site with Zeroizing::new() so no bare String copy escapes — Zeroizing<String> drops the heap buffer on scope exit
+- No downstream changes needed — Zeroizing<String> Deref<Target=String> then String Deref<Target=str> means &pin passes where &str expected
+
 ### Pending Todos
 
 None.
@@ -54,5 +59,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 14-01-PLAN.md — Zeroizing wrappers applied; ready for 14-02
+Stopped at: Completed 14-02-PLAN.md — Phase 14 (Memory Zeroization) fully complete; ready for Phase 15
 Resume file: None

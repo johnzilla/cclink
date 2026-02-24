@@ -54,7 +54,7 @@ Full details: `milestones/v1.2-ROADMAP.md`
 
 **Milestone Goal:** Protect the Ed25519 secret key at rest with passphrase encryption and zeroize all sensitive key material from memory after use.
 
-- [ ] **Phase 14: Memory Zeroization** - Zeroize X25519 scalar, decrypted key bytes, and passphrase/PIN strings from memory after use
+- [x] **Phase 14: Memory Zeroization** - Zeroize X25519 scalar, decrypted key bytes, and passphrase/PIN strings from memory after use (completed 2026-02-24)
 - [ ] **Phase 15: Encrypted Key Crypto Layer** - Implement the CCLINKEK binary envelope format with encrypt/decrypt functions and unit tests
 - [ ] **Phase 16: Encrypted Key Storage and CLI Integration** - Wire passphrase-protected init, format-detecting load, and backward-compatible plaintext fallback into the full user-facing flow
 
@@ -114,6 +114,6 @@ Plans:
 | 11. Prerequisites | v1.2 | 2/2 | Complete | 2026-02-23 |
 | 12. CI Hardening | v1.2 | 1/1 | Complete | 2026-02-24 |
 | 13. Code Quality and Security | v1.2 | 2/2 | Complete | 2026-02-24 |
-| 14. Memory Zeroization | 1/2 | In Progress|  | - |
+| 14. Memory Zeroization | 2/2 | Complete   | 2026-02-24 | - |
 | 15. Encrypted Key Crypto Layer | v1.3 | 0/TBD | Not started | - |
 | 16. Encrypted Key Storage and CLI Integration | v1.3 | 0/TBD | Not started | - |
