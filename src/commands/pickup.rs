@@ -9,6 +9,8 @@
 use std::io::IsTerminal;
 use std::time::SystemTime;
 
+use zeroize::Zeroizing;
+
 use backon::{BlockingRetryable, ExponentialBuilder};
 use base64::Engine;
 use owo_colors::{OwoColorize, Stream::Stdout};
@@ -134,10 +136,12 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
             .decode(&record.blob)
             .map_err(|e| anyhow::anyhow!("failed to decode blob: {}", e))?;
 
-        let pin = dialoguer::Password::new()
-            .with_prompt("Enter PIN")
-            .interact()
-            .map_err(|e| anyhow::anyhow!("PIN prompt failed: {}", e))?;
+        let pin = Zeroizing::new(
+            dialoguer::Password::new()
+                .with_prompt("Enter PIN")
+                .interact()
+                .map_err(|e| anyhow::anyhow!("PIN prompt failed: {}", e))?,
+        );
 
         match crate::crypto::pin_decrypt(&ciphertext, &pin, &salt) {
             Ok(plaintext) => {

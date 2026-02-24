@@ -5,6 +5,7 @@ use std::time::SystemTime;
 
 use base64::Engine;
 use owo_colors::{OwoColorize, Stream::Stderr, Stream::Stdout};
+use zeroize::Zeroizing;
 
 use crate::error::CclinkError;
 
@@ -151,11 +152,13 @@ pub fn run_publish(cli: &crate::cli::Cli) -> anyhow::Result<()> {
 
     let (blob, pin_salt_value) = if cli.pin {
         // PIN-protected: prompt for PIN, validate strength, encrypt with PIN-derived key
-        let pin = dialoguer::Password::new()
-            .with_prompt("Enter PIN for this handoff")
-            .with_confirmation("Confirm PIN", "PINs don't match")
-            .interact()
-            .map_err(|e| anyhow::anyhow!("PIN prompt failed: {}", e))?;
+        let pin = Zeroizing::new(
+            dialoguer::Password::new()
+                .with_prompt("Enter PIN for this handoff")
+                .with_confirmation("Confirm PIN", "PINs don't match")
+                .interact()
+                .map_err(|e| anyhow::anyhow!("PIN prompt failed: {}", e))?,
+        );
 
         // Validate PIN strength before any encryption or network call.
         // Uses eprintln! + process::exit(1) to avoid double-printing via anyhow's
