@@ -13,7 +13,7 @@ Requirements for v1.3 Key Security Hardening. Each maps to roadmap phases.
 - [ ] **KEYS-02**: User can create an unprotected keypair with `cclink init --no-passphrase`
 - [ ] **KEYS-03**: User is prompted for passphrase when any command loads an encrypted keypair
 - [ ] **KEYS-04**: User sees clear "Wrong passphrase" error on incorrect passphrase (exit 1, no retry)
-- [ ] **KEYS-05**: Encrypted key file uses self-describing format (JSON envelope with version, salt, ciphertext)
+- [x] **KEYS-05**: Encrypted key file uses self-describing format (JSON envelope with version, salt, ciphertext)
 - [ ] **KEYS-06**: Encrypted key file preserves 0600 permissions
 
 ### Memory Zeroization
@@ -61,7 +61,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | KEYS-02 | Phase 16 | Pending |
 | KEYS-03 | Phase 16 | Pending |
 | KEYS-04 | Phase 16 | Pending |
-| KEYS-05 | Phase 15 | Pending |
+| KEYS-05 | Phase 15 | Complete |
 | KEYS-06 | Phase 16 | Pending |
 | ZERO-01 | Phase 14 | Complete |
 | ZERO-02 | Phase 14 | Complete |

@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-24)
 
 **Core value:** Effortless, secure session handoff between devices: `cclink` on one machine, `cclink pickup` on another, you're back in your session.
-**Current focus:** Phase 15 — Encrypted Key Storage (next)
+**Current focus:** Phase 15 — Encrypted Key Storage (in progress)
 
 ## Current Position
 
-Phase: 14 of 16 in v1.3 (Memory Zeroization) — COMPLETE
-Plan: 2 of 2 in current phase (14-02 complete)
-Status: Phase 14 complete — ready for Phase 15
-Last activity: 2026-02-24 — 14-02 complete: Zeroizing wrappers applied to PIN prompt sites in publish.rs and pickup.rs
+Phase: 15 of 16 in v1.3 (Encrypted Key Crypto Layer) — In Progress
+Plan: 1 of 2 in current phase (15-01 complete)
+Status: Phase 15 plan 01 complete — ready for Phase 15 plan 02 (or Phase 16 if no plan 02)
+Last activity: 2026-02-24 — 15-01 complete: CCLINKEK binary envelope encrypt/decrypt crypto layer implemented with 8 TDD tests
 
-Progress: [█████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 29% (v1.3 — 2 of 7 plans complete)
+Progress: [███████░░░░░░░░░░░░░░░░░░░░░░░░░░░] 43% (v1.3 — 3 of 7 plans complete)
 
 ## Performance Metrics
 
@@ -22,8 +22,8 @@ Progress: [█████░░░░░░░░░░░░░░░░░░
 - v1.0: 14 plans (Phases 1-5) | 2 days
 - v1.1: 9 plans (Phases 6-10) | 1 day
 - v1.2: 5 plans (Phases 11-13) | 2 days
-- v1.3 so far: 2 plans (Phase 14) | <1 day
-- Total: 30 plans across 14 phases
+- v1.3 so far: 3 plans (Phases 14-15) | <1 day
+- Total: 31 plans across 15 phases
 
 ## Accumulated Context
 
@@ -47,17 +47,23 @@ Key decisions from 14-02:
 - Wrap at the interact() call site with Zeroizing::new() so no bare String copy escapes — Zeroizing<String> drops the heap buffer on scope exit
 - No downstream changes needed — Zeroizing<String> Deref<Target=String> then String Deref<Target=str> means &pin passes where &str expected
 
+Key decisions from 15-01:
+- CCLINKEK binary envelope stores Argon2 params in header (not constants) for forward-compatible decryption on future param upgrades
+- HKDF info b"cclink-key-v1" distinct from b"cclink-pin-v1" — domain separation is a named constant (KEY_HKDF_INFO)
+- decrypt_key_envelope returns Zeroizing<[u8;32]> not Vec<u8> — Phase 16 passes directly to pkarr::Keypair::from_secret_key with auto-deref
+- age decrypt error mapped to "Wrong passphrase or corrupted key envelope" — no raw age internals leak to user
+
 ### Pending Todos
 
 None.
 
 ### Blockers/Concerns
 
-- Phase 15/16: Confirm `pkarr::Keypair::from_secret_key` exact API signature during Phase 15 implementation (Architecture.md assumes `&[u8; 32]` input; verify against pkarr 5.0.3)
 - Phase 16: Validate non-interactive terminal guard behavior with piped invocations (e.g., `cclink publish < /dev/null`) during integration testing
+Note: pkarr::Keypair::from_secret_key API confirmed as &[u8;32] — blocker from 14-02 resolved during Phase 15 implementation
 
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 14-02-PLAN.md — Phase 14 (Memory Zeroization) fully complete; ready for Phase 15
+Stopped at: Completed 15-01-PLAN.md — Phase 15 Plan 01 (CCLINKEK crypto layer) complete; ready for Phase 16 (encrypted key storage integration)
 Resume file: None
