@@ -43,26 +43,18 @@ Effortless, secure session handoff between devices: `cclink` on one machine, `cc
 - ✓ Encrypt all sensitive metadata into blob (no cleartext hostname/project on DHT) -- v1.1
 - ✓ Direct PKARR Mainline DHT transport (no homeserver dependency) -- v1.1
 
+- ✓ Document ed25519-dalek pre-release constraint (pkarr 5.0.3 forces =3.0.0-pre.5) -- v1.2
+- ✓ Replace unmaintained `backoff` crate with `backon` (RUSTSEC-2025-0012, RUSTSEC-2024-0384) -- v1.2
+- ✓ Add cargo clippy, cargo fmt, and cargo audit to CI pipeline -- v1.2
+- ✓ Enforce minimum 8-character PIN length at publish time with strength rules -- v1.2
+- ✓ Fix placeholder `user/cclink` repo paths in Cargo.toml and install.sh -- v1.2
+- ✓ Remove dead LatestPointer code from DHT migration -- v1.2
+
 ### Active
 
-<!-- v1.2 Dependency Audit & Code Quality -->
-
-- [ ] Audit and upgrade ed25519-dalek from pre-release (=3.0.0-pre.5)
-- [ ] Add cargo clippy and cargo audit to CI pipeline
-- [ ] Enforce minimum PIN length at publish time
-- [ ] Fix placeholder `user/cclink` repo paths in Cargo.toml and install.sh
-- [ ] Remove dead LatestPointer code from DHT migration
 - [ ] Fix QR code content when --share + --qr combined
-
-## Current Milestone: v1.2 Dependency Audit & Code Quality
-
-**Goal:** Address code review findings — audit crypto dependencies, harden CI, enforce PIN strength, and clean up tech debt.
-
-**Target features:**
-- Investigate and resolve ed25519-dalek pre-release pinning
-- Add cargo clippy and cargo audit to CI
-- Enforce minimum PIN length/complexity
-- Fix known tech debt (placeholder paths, dead code, QR+share bug)
+- [ ] Encrypted key storage at rest using passphrase (Argon2-derived)
+- [ ] System keystore integration (macOS Keychain, Freedesktop Secret Service)
 
 ### Out of Scope
 
@@ -71,13 +63,16 @@ Effortless, secure session handoff between devices: `cclink` on one machine, `cc
 - Claude Code hook/plugin integration -- future consideration
 - Mobile app -- terminal-only
 - Session preview/summary -- would require accessing session content
-- Override inferred project label via `--project` -- deferred, not in code review scope
+- Override inferred project label via `--project` -- deferred
 - Burn-after-read for shared records -- DHT can only be revoked by key owner
+- ed25519-dalek upgrade to stable -- pkarr 5.0.3 forces 3.x pre-release; no stable 3.x exists
+- PIN complexity rules beyond current set -- NIST 800-63B-4 recommends against mandatory complexity
 
 ## Context
 
-Shipped v1.1 with 2,633 LOC Rust (src) + 590 LOC tests.
-Tech stack: Rust, pkarr 5.0.3 (Mainline DHT), age (X25519), clap, owo-colors, comfy-table, qr2term, argon2.
+Shipped v1.2 with 2,867 LOC Rust.
+Tech stack: Rust, pkarr 5.0.3 (Mainline DHT), age (X25519), clap, owo-colors, comfy-table, qr2term, argon2, backon.
+CI: 3-job parallel pipeline (test, lint, audit) on every push/PR.
 
 - Claude Code stores sessions in `~/.claude/projects/` as directories with JSONL progress records
 - `claude --resume <sessionID>` resumes a session from any device with filesystem access
@@ -114,6 +109,11 @@ Tech stack: Rust, pkarr 5.0.3 (Mainline DHT), age (X25519), clap, owo-colors, co
 | Replace homeserver with DHT | Eliminates signup tokens, accounts, authentication sessions | ✓ Good |
 | Encrypt metadata into blob | No hostname/project leakage on DHT | ✓ Good |
 | skip_serializing_if on defaults | Saves ~71 bytes in common case for SignedPacket budget | ✓ Good |
+| Document ed25519-dalek pin (not upgrade) | pkarr 5.0.3 forces =3.0.0-pre.5; no stable 3.x exists | ✓ Good |
+| Replace backoff with backon | Eliminates 2 RUSTSEC advisories, backon API is cleaner | ✓ Good |
+| PIN validation in publish.rs (not separate module) | Single-use function, no reuse benefit from extraction | ✓ Good |
+| eprintln! + exit(1) for PIN rejection | Avoids double error line from anyhow's main() formatter | ✓ Good |
+| Fix prerequisites before CI gates | Avoids red CI on day one | ✓ Good |
 
 ---
-*Last updated: 2026-02-23 after v1.2 milestone start*
+*Last updated: 2026-02-24 after v1.2 milestone*

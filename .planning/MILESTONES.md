@@ -50,3 +50,27 @@
 
 ---
 
+
+## v1.2 Dependency Audit & Code Quality (Shipped: 2026-02-24)
+
+**Phases:** 11-13 (5 plans) | **Rust LOC:** 2,867 | **Timeline:** 2 days
+
+**Delivered:** Code quality hardening -- dependency audit, CI enforcement gates, PIN strength validation, and tech debt cleanup.
+
+**Key accomplishments:**
+- Fixed all clippy warnings, applied rustfmt, documented ed25519-dalek pre-release pin constraint
+- Replaced unmaintained `backoff` crate with `backon` -- eliminated RUSTSEC-2025-0012 and RUSTSEC-2024-0384
+- Added parallel lint (clippy + fmt) and audit jobs to CI -- three-job pipeline on every push/PR
+- PIN strength validation at publish time -- 4 rules (min 8 chars, all-same, sequential, common word), 15 tests
+- Removed dead LatestPointer code and fixed placeholder repo paths to johnzilla/cclink
+
+**Git range:** `3a90895` → `c6d3858` (36 files, 3,547 insertions, 230 deletions)
+
+**Known tech debt:**
+- Age ciphertext size non-deterministic (budget relies on skip_serializing_if)
+- QR code content wrong when `--share` + `--qr` combined
+
+**Archive:** `milestones/v1.2-ROADMAP.md`, `milestones/v1.2-REQUIREMENTS.md`
+
+---
+
