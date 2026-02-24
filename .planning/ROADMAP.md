@@ -84,7 +84,10 @@ Plans:
   2. `cclink --pin 12345678` (8 chars) proceeds normally
   3. `cargo test` passes with `LatestPointer` struct and its test removed from `src/record/mod.rs`
   4. `Cargo.toml` repository and homepage fields and `install.sh` REPO variable contain the real `johnzilla/cclink` path
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 13-01-PLAN.md — PIN strength validation with TDD (validate_pin function)
+- [ ] 13-02-PLAN.md — Remove dead LatestPointer code and fix placeholder repository paths
 
 ## Progress
 
@@ -102,4 +105,4 @@ Plans:
 | 10. Pubky Homeserver Transport Fix | v1.1 | 2/2 | Complete | 2026-02-22 |
 | 11. Prerequisites | v1.2 | Complete    | 2026-02-23 | 2026-02-23 |
 | 12. CI Hardening | 1/1 | Complete    | 2026-02-24 | - |
-| 13. Code Quality and Security | v1.2 | 0/TBD | Not started | - |
+| 13. Code Quality and Security | v1.2 | 0/2 | Not started | - |
