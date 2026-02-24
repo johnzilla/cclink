@@ -1,4 +1,5 @@
 use anyhow::Context;
+use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 use zeroize::Zeroizing;
 
@@ -84,6 +85,52 @@ pub fn read_homeserver() -> anyhow::Result<String> {
     Ok(value)
 }
 
+/// Write a raw binary envelope (e.g. CCLINKEK) to disk atomically with 0600 permissions.
+///
+/// Follows the same atomic-write pattern as `write_keypair_atomic`: write to a temp
+/// file, set permissions, then rename. The envelope bytes are written verbatim (not hex).
+// Plan 02 wires this into `cclink init`; suppress dead_code until then.
+#[allow(dead_code)]
+pub fn write_encrypted_keypair_atomic(envelope: &[u8], dest: &Path) -> anyhow::Result<()> {
+    let parent = dest
+        .parent()
+        .ok_or_else(|| anyhow::anyhow!("Key destination path has no parent directory"))?;
+
+    let tmp = parent.join(".secret_key.tmp");
+
+    std::fs::write(&tmp, envelope).map_err(CclinkError::AtomicWriteFailed)?;
+
+    // Set 0600 on temp file BEFORE rename to minimize the insecure window (SEC-02).
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&tmp, std::fs::Permissions::from_mode(0o600)).with_context(
+            || {
+                format!(
+                    "Failed to set 0600 permissions on tmp file {}",
+                    tmp.display()
+                )
+            },
+        )?;
+    }
+
+    if let Err(e) = std::fs::rename(&tmp, dest) {
+        // Attempt cleanup of temp file on rename failure
+        let _ = std::fs::remove_file(&tmp);
+        return Err(CclinkError::AtomicWriteFailed(e).into());
+    }
+
+    // Defense-in-depth: set 0600 again on the final dest after rename (same as write_keypair_atomic).
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(dest, std::fs::Permissions::from_mode(0o600))
+            .with_context(|| format!("Failed to set 0600 permissions on {}", dest.display()))?;
+    }
+
+    Ok(())
+}
+
 /// Load the keypair from the default secret key path.
 ///
 /// Performs a permission check before reading the key file: if the file has permissions
@@ -91,9 +138,12 @@ pub fn read_homeserver() -> anyhow::Result<String> {
 /// remediation command. This check is cclink's own enforcement (SEC-02) and is not
 /// delegated to pkarr.
 ///
-/// Reads the hex key file into a `Zeroizing<String>` so the hex bytes are wiped on drop.
-/// Decodes hex into a `Zeroizing<[u8; 32]>` seed with no intermediate Vec<u8> allocation.
-/// Both zeroizing buffers are dropped (and zeroed) after `from_secret_key` returns.
+/// Transparently detects the file format:
+/// - CCLINKEK magic bytes → encrypted envelope → prompts for passphrase (interactive)
+/// - Otherwise → plaintext hex key → decoded directly with no passphrase prompt
+///
+/// This provides backward compatibility: existing hex key files load without any
+/// change in behavior.
 pub fn load_keypair() -> anyhow::Result<pkarr::Keypair> {
     let path = secret_key_path()?;
     if !path.exists() {
@@ -102,11 +152,26 @@ pub fn load_keypair() -> anyhow::Result<pkarr::Keypair> {
     // Enforce 0600 permissions before reading key material (SEC-02).
     check_key_permissions(&path)?;
 
-    // Read the hex-encoded key file into a Zeroizing string so it is wiped on drop.
-    let hex_string = Zeroizing::new(
-        std::fs::read_to_string(&path)
-            .with_context(|| format!("Failed to read key file: {}", path.display()))?,
-    );
+    // Read as raw bytes — CCLINKEK envelopes are binary, not valid UTF-8.
+    let raw = std::fs::read(&path)
+        .with_context(|| format!("Failed to read key file: {}", path.display()))?;
+
+    if raw.starts_with(b"CCLINKEK") {
+        load_encrypted_keypair(&raw)
+    } else {
+        load_plaintext_keypair(&raw)
+    }
+}
+
+/// Decode a plaintext hex key file (64 hex chars) into a Keypair.
+///
+/// Extracted from the original `load_keypair` logic. The raw bytes are decoded
+/// to a UTF-8 string, trimmed, validated for length, and hex-decoded into a
+/// `Zeroizing<[u8;32]>` seed with no intermediate Vec<u8> allocation.
+fn load_plaintext_keypair(raw: &[u8]) -> anyhow::Result<pkarr::Keypair> {
+    // Convert bytes to string, wrapping in Zeroizing so the heap buffer is wiped on drop.
+    let hex_string =
+        Zeroizing::new(String::from_utf8(raw.to_vec()).context("Key file is not valid UTF-8")?);
     let hex_trimmed = hex_string.trim();
 
     // Validate length: a 32-byte secret key encodes to exactly 64 hex characters.
@@ -126,6 +191,43 @@ pub fn load_keypair() -> anyhow::Result<pkarr::Keypair> {
     }
 
     // Construct the keypair from the zeroizing seed; seed and hex_string are zeroed on drop.
+    Ok(pkarr::Keypair::from_secret_key(&seed))
+}
+
+/// Prompt for a passphrase interactively and decrypt a CCLINKEK envelope.
+///
+/// Requires an interactive terminal — rejects piped/redirected stdin with a clear
+/// error message. On wrong passphrase, prints a user-facing message and exits(1)
+/// so the caller never receives an incorrect keypair silently.
+fn load_encrypted_keypair(envelope: &[u8]) -> anyhow::Result<pkarr::Keypair> {
+    if !std::io::stdin().is_terminal() {
+        anyhow::bail!("Encrypted keypair requires interactive terminal for passphrase entry");
+    }
+    let passphrase = Zeroizing::new(
+        dialoguer::Password::new()
+            .with_prompt("Enter key passphrase")
+            .interact()
+            .map_err(|e| anyhow::anyhow!("Passphrase prompt failed: {}", e))?,
+    );
+    match load_encrypted_keypair_with_passphrase(envelope, &passphrase) {
+        Ok(kp) => Ok(kp),
+        Err(_) => {
+            eprintln!("Wrong passphrase");
+            std::process::exit(1);
+        }
+    }
+}
+
+/// Decrypt a CCLINKEK envelope with the given passphrase and return the Keypair.
+///
+/// This is the testable core: no I/O, no terminal dependency. Returns `Ok(Keypair)`
+/// on success or propagates the `Err` from `decrypt_key_envelope` on failure.
+/// The interactive wrapper (`load_encrypted_keypair`) converts the `Err` to an exit(1).
+fn load_encrypted_keypair_with_passphrase(
+    envelope: &[u8],
+    passphrase: &str,
+) -> anyhow::Result<pkarr::Keypair> {
+    let seed = crate::crypto::decrypt_key_envelope(envelope, passphrase)?;
     Ok(pkarr::Keypair::from_secret_key(&seed))
 }
 
@@ -175,8 +277,8 @@ mod tests {
         let dir = tempfile::tempdir().expect("Failed to create temp dir");
         let path = dir.path().join("secret_key");
         let keypair = pkarr::Keypair::random();
-        let envelope =
-            encrypt_key_envelope(&keypair.secret_key(), "testpass1234").expect("encrypt should succeed");
+        let envelope = encrypt_key_envelope(&keypair.secret_key(), "testpass1234")
+            .expect("encrypt should succeed");
         write_encrypted_keypair_atomic(&envelope, &path).expect("write should succeed");
         let contents = std::fs::read(&path).expect("Failed to read file");
         assert!(
@@ -196,8 +298,8 @@ mod tests {
         let dir = tempfile::tempdir().expect("Failed to create temp dir");
         let path = dir.path().join("secret_key");
         let keypair = pkarr::Keypair::random();
-        let envelope =
-            encrypt_key_envelope(&keypair.secret_key(), "testpass1234").expect("encrypt should succeed");
+        let envelope = encrypt_key_envelope(&keypair.secret_key(), "testpass1234")
+            .expect("encrypt should succeed");
         write_encrypted_keypair_atomic(&envelope, &path).expect("write should succeed");
         let metadata = std::fs::metadata(&path).expect("Failed to read metadata");
         let mode = metadata.permissions().mode() & 0o777;
@@ -219,7 +321,8 @@ mod tests {
                 .expect("Failed to set permissions");
         }
         let raw_bytes = std::fs::read(&path).expect("Failed to read file");
-        let loaded = load_plaintext_keypair(&raw_bytes).expect("load_plaintext_keypair should succeed");
+        let loaded =
+            load_plaintext_keypair(&raw_bytes).expect("load_plaintext_keypair should succeed");
         assert_eq!(
             loaded.public_key().to_z32(),
             keypair.public_key().to_z32(),
@@ -230,8 +333,8 @@ mod tests {
     #[test]
     fn test_load_encrypted_keypair_round_trip() {
         let keypair = pkarr::Keypair::random();
-        let envelope =
-            encrypt_key_envelope(&keypair.secret_key(), "testpass1234").expect("encrypt should succeed");
+        let envelope = encrypt_key_envelope(&keypair.secret_key(), "testpass1234")
+            .expect("encrypt should succeed");
         let loaded = load_encrypted_keypair_with_passphrase(&envelope, "testpass1234")
             .expect("load_encrypted_keypair_with_passphrase should succeed");
         assert_eq!(
@@ -244,17 +347,20 @@ mod tests {
     #[test]
     fn test_load_encrypted_keypair_wrong_passphrase() {
         let keypair = pkarr::Keypair::random();
-        let envelope =
-            encrypt_key_envelope(&keypair.secret_key(), "testpass1234").expect("encrypt should succeed");
+        let envelope = encrypt_key_envelope(&keypair.secret_key(), "testpass1234")
+            .expect("encrypt should succeed");
         let result = load_encrypted_keypair_with_passphrase(&envelope, "wrongpass999");
-        assert!(result.is_err(), "Wrong passphrase must return Err (not a panic)");
+        assert!(
+            result.is_err(),
+            "Wrong passphrase must return Err (not a panic)"
+        );
     }
 
     #[test]
     fn test_load_keypair_format_detection_encrypted() {
         let keypair = pkarr::Keypair::random();
-        let envelope =
-            encrypt_key_envelope(&keypair.secret_key(), "testpass1234").expect("encrypt should succeed");
+        let envelope = encrypt_key_envelope(&keypair.secret_key(), "testpass1234")
+            .expect("encrypt should succeed");
         assert!(
             envelope.starts_with(b"CCLINKEK"),
             "Encrypted envelope must start with CCLINKEK magic bytes"
