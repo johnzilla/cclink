@@ -71,7 +71,9 @@ Plans:
   2. CI runs an `audit` job with `actions-rust-lang/audit@v1` on every push
   3. A commit that introduces a clippy warning causes the `lint` job to fail while the `test` job remains green
   4. Lint and audit jobs run in parallel with the existing test job (not appended to it)
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 12-01-PLAN.md — Add lint and audit jobs to CI workflow
 
 ### Phase 13: Code Quality and Security
 **Goal**: PIN enforcement prevents weak PINs at publish time, dead DHT migration code is gone, and real repository metadata is in place for users who run the curl installer
@@ -99,5 +101,5 @@ Plans:
 | 9. PIN-Protected Handoffs | v1.1 | 2/2 | Complete | 2026-02-22 |
 | 10. Pubky Homeserver Transport Fix | v1.1 | 2/2 | Complete | 2026-02-22 |
 | 11. Prerequisites | v1.2 | Complete    | 2026-02-23 | 2026-02-23 |
-| 12. CI Hardening | v1.2 | 0/TBD | Not started | - |
+| 12. CI Hardening | v1.2 | 0/1 | Not started | - |
 | 13. Code Quality and Security | v1.2 | 0/TBD | Not started | - |
