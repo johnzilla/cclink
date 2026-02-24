@@ -196,3 +196,144 @@ pub fn run_publish(cli: &crate::cli::Cli) -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::validate_pin;
+
+    // ── Length check ────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_pin_too_short_7_chars() {
+        let result = validate_pin("1234567");
+        assert_eq!(
+            result,
+            Err("PIN must be at least 8 characters (got 7)".to_string())
+        );
+    }
+
+    #[test]
+    fn test_pin_too_short_3_chars() {
+        let result = validate_pin("abc");
+        assert_eq!(
+            result,
+            Err("PIN must be at least 8 characters (got 3)".to_string())
+        );
+    }
+
+    #[test]
+    fn test_pin_exactly_8_chars_valid_passes_length_check() {
+        // validpin is 8 chars, not all-same, not sequential, not common
+        let result = validate_pin("validpin");
+        assert_eq!(result, Ok(()));
+    }
+
+    // ── All-same character check ─────────────────────────────────────────────
+
+    #[test]
+    fn test_pin_all_same_zeros() {
+        let result = validate_pin("00000000");
+        assert_eq!(
+            result,
+            Err("PIN rejected: all characters are the same".to_string())
+        );
+    }
+
+    #[test]
+    fn test_pin_all_same_letters() {
+        let result = validate_pin("aaaaaaaa");
+        assert_eq!(
+            result,
+            Err("PIN rejected: all characters are the same".to_string())
+        );
+    }
+
+    // ── Sequential pattern check ─────────────────────────────────────────────
+
+    #[test]
+    fn test_pin_sequential_ascending_numeric() {
+        let result = validate_pin("12345678");
+        assert_eq!(
+            result,
+            Err("PIN rejected: sequential pattern".to_string())
+        );
+    }
+
+    #[test]
+    fn test_pin_sequential_ascending_alpha() {
+        let result = validate_pin("abcdefgh");
+        assert_eq!(
+            result,
+            Err("PIN rejected: sequential pattern".to_string())
+        );
+    }
+
+    #[test]
+    fn test_pin_sequential_descending_numeric() {
+        let result = validate_pin("87654321");
+        assert_eq!(
+            result,
+            Err("PIN rejected: sequential pattern".to_string())
+        );
+    }
+
+    #[test]
+    fn test_pin_sequential_descending_alpha() {
+        let result = validate_pin("hgfedcba");
+        assert_eq!(
+            result,
+            Err("PIN rejected: sequential pattern".to_string())
+        );
+    }
+
+    #[test]
+    fn test_pin_not_sequential_last_char_breaks_pattern() {
+        // 12345679 — last digit breaks the sequence; should pass all checks
+        let result = validate_pin("12345679");
+        assert_eq!(result, Ok(()));
+    }
+
+    // ── Common word / pattern check ──────────────────────────────────────────
+
+    #[test]
+    fn test_pin_common_word_password() {
+        let result = validate_pin("password");
+        assert_eq!(
+            result,
+            Err("PIN rejected: common word or pattern".to_string())
+        );
+    }
+
+    #[test]
+    fn test_pin_common_word_qwertyui() {
+        // "qwerty" is 6 chars (caught by length), "qwertyui" is 8 and in the common list
+        let result = validate_pin("qwertyui");
+        assert_eq!(
+            result,
+            Err("PIN rejected: common word or pattern".to_string())
+        );
+    }
+
+    #[test]
+    fn test_pin_common_word_case_insensitive() {
+        let result = validate_pin("Password");
+        assert_eq!(
+            result,
+            Err("PIN rejected: common word or pattern".to_string())
+        );
+    }
+
+    // ── Valid PIN ────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_pin_valid_complex() {
+        let result = validate_pin("MyS3cur3P1n!");
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn test_pin_valid_plain_8_chars() {
+        let result = validate_pin("validpin");
+        assert_eq!(result, Ok(()));
+    }
+}
