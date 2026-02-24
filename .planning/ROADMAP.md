@@ -121,4 +121,4 @@ Plans:
 | 13. Code Quality and Security | v1.2 | 2/2 | Complete | 2026-02-24 |
 | 14. Memory Zeroization | 2/2 | Complete    | 2026-02-24 | - |
 | 15. Encrypted Key Crypto Layer | 1/1 | Complete    | 2026-02-24 | - |
-| 16. Encrypted Key Storage and CLI Integration | v1.3 | 0/2 | Not started | - |
+| 16. Encrypted Key Storage and CLI Integration | 1/2 | In Progress|  | - |

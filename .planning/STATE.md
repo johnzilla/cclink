@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-24)
 
 **Core value:** Effortless, secure session handoff between devices: `cclink` on one machine, `cclink pickup` on another, you're back in your session.
-**Current focus:** Phase 15 — Encrypted Key Storage (in progress)
+**Current focus:** Phase 16 — Encrypted Key Storage + CLI Integration (in progress)
 
 ## Current Position
 
-Phase: 15 of 16 in v1.3 (Encrypted Key Crypto Layer) — In Progress
-Plan: 1 of 2 in current phase (15-01 complete)
-Status: Phase 15 plan 01 complete — ready for Phase 15 plan 02 (or Phase 16 if no plan 02)
-Last activity: 2026-02-24 — 15-01 complete: CCLINKEK binary envelope encrypt/decrypt crypto layer implemented with 8 TDD tests
+Phase: 16 of 16 in v1.3 (Encrypted Key Storage CLI Integration) — In Progress
+Plan: 1 of 2 in current phase (16-01 complete)
+Status: Phase 16 plan 01 complete — ready for Phase 16 plan 02 (CLI wiring for run_init passphrase prompt)
+Last activity: 2026-02-24 — 16-01 complete: encrypted key store layer (write_encrypted_keypair_atomic, format-detecting load_keypair) with 6 TDD tests
 
-Progress: [███████░░░░░░░░░░░░░░░░░░░░░░░░░░░] 43% (v1.3 — 3 of 7 plans complete)
+Progress: [████████░░░░░░░░░░░░░░░░░░░░░░░░░░] 57% (v1.3 — 4 of 7 plans complete)
 
 ## Performance Metrics
 
@@ -22,8 +22,8 @@ Progress: [███████░░░░░░░░░░░░░░░░
 - v1.0: 14 plans (Phases 1-5) | 2 days
 - v1.1: 9 plans (Phases 6-10) | 1 day
 - v1.2: 5 plans (Phases 11-13) | 2 days
-- v1.3 so far: 3 plans (Phases 14-15) | <1 day
-- Total: 31 plans across 15 phases
+- v1.3 so far: 4 plans (Phases 14-16) | <1 day
+- Total: 32 plans across 16 phases
 
 ## Accumulated Context
 
@@ -53,6 +53,12 @@ Key decisions from 15-01:
 - decrypt_key_envelope returns Zeroizing<[u8;32]> not Vec<u8> — Phase 16 passes directly to pkarr::Keypair::from_secret_key with auto-deref
 - age decrypt error mapped to "Wrong passphrase or corrupted key envelope" — no raw age internals leak to user
 
+Key decisions from 16-01:
+- Testable core pattern: load_encrypted_keypair_with_passphrase returns Err for wrong passphrase; interactive wrapper load_encrypted_keypair converts Err to eprintln+exit(1) — enables test assertions and production UX
+- write_encrypted_keypair_atomic sets 0600 before rename (minimize insecure window) and after rename (defense-in-depth)
+- load_keypair uses std::fs::read (Vec<u8>) not read_to_string — CCLINKEK envelopes are binary and not valid UTF-8
+- Binary format detection before dispatch: read raw bytes, check magic, branch to format-specific loader
+
 ### Pending Todos
 
 None.
@@ -65,5 +71,5 @@ Note: pkarr::Keypair::from_secret_key API confirmed as &[u8;32] — blocker from
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 15-01-PLAN.md — Phase 15 Plan 01 (CCLINKEK crypto layer) complete; ready for Phase 16 (encrypted key storage integration)
+Stopped at: Completed 16-01-PLAN.md — Phase 16 Plan 01 (encrypted key store layer) complete; ready for Phase 16 Plan 02 (CLI wiring for run_init passphrase prompt)
 Resume file: None
