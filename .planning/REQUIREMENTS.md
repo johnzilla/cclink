@@ -57,21 +57,21 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| KEYS-01 | — | Pending |
-| KEYS-02 | — | Pending |
-| KEYS-03 | — | Pending |
-| KEYS-04 | — | Pending |
-| KEYS-05 | — | Pending |
-| KEYS-06 | — | Pending |
-| ZERO-01 | — | Pending |
-| ZERO-02 | — | Pending |
-| ZERO-03 | — | Pending |
+| KEYS-01 | Phase 16 | Pending |
+| KEYS-02 | Phase 16 | Pending |
+| KEYS-03 | Phase 16 | Pending |
+| KEYS-04 | Phase 16 | Pending |
+| KEYS-05 | Phase 15 | Pending |
+| KEYS-06 | Phase 16 | Pending |
+| ZERO-01 | Phase 14 | Pending |
+| ZERO-02 | Phase 14 | Pending |
+| ZERO-03 | Phase 14 | Pending |
 
 **Coverage:**
 - v1.3 requirements: 9 total
-- Mapped to phases: 0
-- Unmapped: 9
+- Mapped to phases: 9
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-24*
-*Last updated: 2026-02-24 after initial definition*
+*Last updated: 2026-02-24 after roadmap creation*
