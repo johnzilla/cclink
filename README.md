@@ -148,7 +148,9 @@ Modes can be combined: `cclink --burn --pin` creates a PIN-protected, single-use
 
 **Key principle**: No session content or metadata transits the network in cleartext. The entire payload (session ID, hostname, project path) is encrypted into a single blob. The outer record contains only the ciphertext, timestamps, public key, and flags. The pickup device still needs access to `~/.claude/sessions/` (via shared filesystem, SSH, Tailscale, etc.) to actually resume the session.
 
-**At rest**: Keys are stored in a CCLINKEK encrypted envelope by default. The passphrase is derived via Argon2id (64 MB, 3 iterations) + HKDF-SHA256, then used to encrypt the Ed25519 seed with age. Existing plaintext key files from v1.2 and earlier continue to work without any passphrase prompt.
+**At rest**: Keys are stored in a CCLINKEK encrypted envelope by default. Existing plaintext key files from v1.2 and earlier continue to work without any passphrase prompt.
+
+**Key derivation**: Both PINs and key passphrases use Argon2id (64 MB memory, 3 iterations, 1 parallelism) followed by HKDF-SHA256 with domain-separated info strings. This is the same memory-hard KDF recommended by OWASP and used by 1Password, Bitwarden, and Signal. Brute-forcing a passphrase requires ~64 MB per guess — GPU/ASIC attacks don't scale.
 
 ## Why not just use `/remote-control`?
 
