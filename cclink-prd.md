@@ -1,5 +1,7 @@
 # CCLink — Signed Session Handoff for Claude Code via Pubky
 
+> **Note:** This is the original design document from project inception. The actual implementation evolved significantly -- see [README.md](README.md) for current documentation. Key differences: transport is now direct PKARR Mainline DHT (no homeserver), PINs require 8+ characters, LatestPointer was removed, and all metadata is encrypted.
+
 > One-line pitch: Ephemeral, cryptographically signed session handoff links for Claude Code, powered by Pubky/PKARR decentralized identity.
 
 ---

@@ -20,10 +20,14 @@ No accounts. No central relay. No signup tokens. Your PKARR key is your identity
 ## Install
 
 ```bash
-cargo install --path .
+curl -fsSL https://raw.githubusercontent.com/johnzilla/cclink/main/install.sh | sh
 ```
 
-Requires Rust 1.70+.
+Or build from source:
+
+```bash
+cargo install --path .
+```
 
 ## Quick start
 
@@ -109,7 +113,7 @@ cclink revoke -y                # skip confirmation
 |------|------|-----------------|
 | Self (default) | _(none)_ | Only you (your X25519 key derived from Ed25519) |
 | Shared | `--share <pubkey>` | Only the specified recipient |
-| PIN | `--pin` | Anyone with the PIN |
+| PIN | `--pin` | Anyone with the PIN (minimum 8 characters) |
 | Burn | `--burn` | Revoked after first successful pickup |
 
 Modes can be combined: `cclink --burn --pin` creates a PIN-protected, single-use handoff.
