@@ -88,23 +88,6 @@ pub struct HandoffRecordSignable {
     pub ttl: u64,
 }
 
-#[allow(dead_code)]
-/// A pointer stored at `latest.json` that references the most recent HandoffRecord.
-///
-/// Contains summary metadata so consumers can quickly check freshness without
-/// fetching the full record.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct LatestPointer {
-    /// Unix timestamp (seconds) when the record was created.
-    pub created_at: u64,
-    /// Hostname of the machine that created the referenced record.
-    pub hostname: String,
-    /// Project path identifier.
-    pub project: String,
-    /// Unix timestamp token matching the record path (used to locate the full record).
-    pub token: String,
-}
-
 /// Encrypted payload containing sensitive session metadata.
 ///
 /// Serialized to JSON, encrypted, and stored in HandoffRecord.blob.
@@ -388,25 +371,6 @@ mod tests {
             result.is_err(),
             "verify_record must fail with tampered content"
         );
-    }
-
-    #[test]
-    fn test_latest_pointer_serialization() {
-        let pointer = LatestPointer {
-            created_at: 1_700_000_000,
-            hostname: "testhost".to_string(),
-            project: "/home/user/project".to_string(),
-            token: "1700000000".to_string(),
-        };
-
-        let json = serde_json::to_string(&pointer).expect("LatestPointer should serialize");
-        let deserialized: LatestPointer =
-            serde_json::from_str(&json).expect("LatestPointer should deserialize");
-
-        assert_eq!(deserialized.created_at, pointer.created_at);
-        assert_eq!(deserialized.hostname, pointer.hostname);
-        assert_eq!(deserialized.project, pointer.project);
-        assert_eq!(deserialized.token, pointer.token);
     }
 
     #[test]
