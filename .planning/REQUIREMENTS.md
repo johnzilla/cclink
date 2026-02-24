@@ -25,8 +25,8 @@ Requirements for v1.2 Dependency Audit & Code Quality. Each maps to roadmap phas
 
 ### Tech Debt
 
-- [ ] **DEBT-01**: Fix placeholder `user/cclink` → `johnzilla/cclink` in Cargo.toml and install.sh
-- [ ] **DEBT-02**: Remove dead `LatestPointer` struct and its serialization test
+- [x] **DEBT-01**: Fix placeholder `user/cclink` → `johnzilla/cclink` in Cargo.toml and install.sh
+- [x] **DEBT-02**: Remove dead `LatestPointer` struct and its serialization test
 
 ## Future Requirements
 
@@ -62,8 +62,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CI-03 | Phase 12 | Complete |
 | CI-04 | Phase 12 | Complete |
 | PIN-01 | Phase 13 | Pending |
-| DEBT-01 | Phase 13 | Pending |
-| DEBT-02 | Phase 13 | Pending |
+| DEBT-01 | Phase 13 | Complete |
+| DEBT-02 | Phase 13 | Complete |
 
 **Coverage:**
 - v1.2 requirements: 9 total

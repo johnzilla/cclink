@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-23)
 
 **Core value:** Effortless, secure session handoff between devices: `cclink` on one machine, `cclink pickup` on another, you're back in your session.
-**Current focus:** v1.2 Dependency Audit & Code Quality — Phase 12: CI Hardening
+**Current focus:** v1.2 Dependency Audit & Code Quality — Phase 13: Code Quality and Security
 
 ## Current Position
 
-Phase: 12 of 13 (CI Hardening)
-Plan: 1 of 1 complete
+Phase: 13 of 13 (Code Quality and Security)
+Plan: 2 of 2 complete
 Status: Phase complete
-Last activity: 2026-02-24 — Completed 12-01: added lint and audit jobs to CI workflow
+Last activity: 2026-02-24 — Completed 13-02: removed dead LatestPointer code, fixed placeholder repo URLs
 
-Progress: [████░░░░░░] 40% (v1.2)
+Progress: [██████████] 100% (v1.2)
 
 ## Performance Metrics
 
@@ -57,16 +57,21 @@ Phase 12 Plan 01 decisions (2026-02-24):
 - No needs: dependencies between test, lint, audit — native GitHub Actions parallelism; failures attributed to correct job in UI
 - lint and audit as top-level jobs (not steps in test job) — clearer failure attribution, satisfies success criterion 3
 
+Phase 13 Plan 02 decisions (2026-02-24):
+- Scope for user/cclink replacement limited to Cargo.toml and install.sh only — no other files contain the placeholder
+- LatestPointer removed entirely (not just the suppression) — the struct is unused and has no referencing code
+- Dead code deleted on discovery, not suppressed with #[allow(dead_code)]
+
 ### Pending Todos
 
 None.
 
 ### Blockers/Concerns
 
-- Real GitHub username needed for DEBT-01: verify with `git remote -v` before editing Cargo.toml and install.sh (expected: `johnzilla/cclink`).
+None.
 
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 12-01-PLAN.md — added lint and audit CI jobs, all three gates pass locally (clippy, fmt, audit)
+Stopped at: Completed 13-02-PLAN.md — removed dead LatestPointer struct, fixed placeholder repo URLs in Cargo.toml and install.sh
 Resume file: None
