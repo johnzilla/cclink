@@ -1,9 +1,9 @@
 #!/bin/sh
-# Usage: curl -fsSL https://raw.githubusercontent.com/user/cclink/main/install.sh | sh
+# Usage: curl -fsSL https://raw.githubusercontent.com/johnzilla/cclink/main/install.sh | sh
 # Override version: CCLINK_VERSION=v1.0.0 sh install.sh
 set -eu
 
-REPO="user/cclink"
+REPO="johnzilla/cclink"
 BINARY="cclink"
 VERSION="${CCLINK_VERSION:-latest}"
 
