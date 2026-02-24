@@ -11,16 +11,17 @@ use hkdf::Hkdf;
 use rand::Rng;
 use sha2::Sha256;
 use std::io::Write;
+use zeroize::Zeroizing;
 
 /// Derive the X25519 secret scalar from an Ed25519 keypair.
 ///
 /// Uses SHA-512(seed)[0..32] via ed25519-dalek's `to_scalar_bytes()`.
 /// The result is compatible with X25519 ECDH as the static secret scalar.
-pub fn ed25519_to_x25519_secret(keypair: &pkarr::Keypair) -> [u8; 32] {
+pub fn ed25519_to_x25519_secret(keypair: &pkarr::Keypair) -> Zeroizing<[u8; 32]> {
     // keypair.secret_key() returns [u8; 32] (raw Ed25519 seed bytes)
     // Reconstruct SigningKey and call to_scalar_bytes() = SHA-512(seed)[0..32]
     let signing_key = ed25519_dalek::SigningKey::from_bytes(&keypair.secret_key());
-    signing_key.to_scalar_bytes()
+    Zeroizing::new(signing_key.to_scalar_bytes())
 }
 
 /// Derive the X25519 public Montgomery point from an Ed25519 keypair.
@@ -117,22 +118,22 @@ pub fn age_decrypt(ciphertext: &[u8], identity: &age::x25519::Identity) -> anyho
 /// HKDF expand uses info="cclink-pin-v1" to domain-separate the output.
 ///
 /// The result is deterministic: same PIN + same salt always produces the same 32-byte key.
-pub fn pin_derive_key(pin: &str, salt: &[u8; 32]) -> anyhow::Result<[u8; 32]> {
+pub fn pin_derive_key(pin: &str, salt: &[u8; 32]) -> anyhow::Result<Zeroizing<[u8; 32]>> {
     // Argon2id with explicit parameters
     let params = Params::new(65536, 3, 1, Some(32))
         .map_err(|e| anyhow::anyhow!("argon2 params error: {}", e))?;
     let argon2 = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
 
-    // Hash the PIN into 32 bytes using the salt
-    let mut argon2_output = [0u8; 32];
+    // Hash the PIN into 32 bytes using the salt; Zeroizing ensures zeroing on drop
+    let mut argon2_output = Zeroizing::new([0u8; 32]);
     argon2
-        .hash_password_into(pin.as_bytes(), salt, &mut argon2_output)
+        .hash_password_into(pin.as_bytes(), salt, argon2_output.as_mut())
         .map_err(|e| anyhow::anyhow!("argon2 hash error: {}", e))?;
 
-    // Expand via HKDF-SHA256 with domain-separation info
-    let hkdf = Hkdf::<Sha256>::new(None, &argon2_output);
-    let mut okm = [0u8; 32];
-    hkdf.expand(b"cclink-pin-v1", &mut okm)
+    // Expand via HKDF-SHA256 with domain-separation info; Zeroizing ensures zeroing on drop
+    let hkdf = Hkdf::<Sha256>::new(None, &*argon2_output);
+    let mut okm = Zeroizing::new([0u8; 32]);
+    hkdf.expand(b"cclink-pin-v1", okm.as_mut())
         .map_err(|e| anyhow::anyhow!("hkdf expand error: {}", e))?;
 
     Ok(okm)
@@ -200,7 +201,7 @@ mod tests {
         );
         assert_eq!(scalar1.len(), 32, "scalar must be 32 bytes");
         // Must not be all zeros (would be a degenerate key)
-        assert_ne!(scalar1, [0u8; 32], "scalar must not be all zeros");
+        assert_ne!(*scalar1, [0u8; 32], "scalar must not be all zeros");
     }
 
     #[test]
@@ -323,7 +324,7 @@ mod tests {
         let key2 = pin_derive_key("1234", &salt).expect("pin_derive_key should succeed");
         assert_eq!(key1, key2, "same PIN + salt must produce identical keys");
         assert_eq!(key1.len(), 32, "derived key must be 32 bytes");
-        assert_ne!(key1, [0u8; 32], "derived key must not be all zeros");
+        assert_ne!(*key1, [0u8; 32], "derived key must not be all zeros");
     }
 
     #[test]
