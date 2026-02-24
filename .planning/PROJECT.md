@@ -50,10 +50,19 @@ Effortless, secure session handoff between devices: `cclink` on one machine, `cc
 - ✓ Fix placeholder `user/cclink` repo paths in Cargo.toml and install.sh -- v1.2
 - ✓ Remove dead LatestPointer code from DHT migration -- v1.2
 
+## Current Milestone: v1.3 Key Security Hardening
+
+**Goal:** Protect the secret key at rest with passphrase encryption and in memory with zeroization.
+
+**Target features:**
+- Encrypted key storage at rest using user-supplied passphrase (Argon2id+HKDF)
+- Secure zeroization of secret key material from memory after use
+
 ### Active
 
-- [ ] Fix QR code content when --share + --qr combined
 - [ ] Encrypted key storage at rest using passphrase (Argon2-derived)
+- [ ] Secure zeroization of secret key material in memory (zeroize crate)
+- [ ] Fix QR code content when --share + --qr combined
 - [ ] System keystore integration (macOS Keychain, Freedesktop Secret Service)
 
 ### Out of Scope
@@ -116,4 +125,4 @@ CI: 3-job parallel pipeline (test, lint, audit) on every push/PR.
 | Fix prerequisites before CI gates | Avoids red CI on day one | ✓ Good |
 
 ---
-*Last updated: 2026-02-24 after v1.2 milestone*
+*Last updated: 2026-02-24 after v1.3 milestone start*
