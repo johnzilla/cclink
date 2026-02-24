@@ -150,13 +150,13 @@ Modes can be combined: `cclink --burn --pin` creates a PIN-protected, single-use
 
 **At rest**: Keys are stored in a CCLINKEK encrypted envelope by default. The passphrase is derived via Argon2id (64 MB, 3 iterations) + HKDF-SHA256, then used to encrypt the Ed25519 seed with age. Existing plaintext key files from v1.2 and earlier continue to work without any passphrase prompt.
 
-## Why not just use `/remote`?
+## Why not just use `/remote-control`?
 
-Claude Code's [Remote Control](https://docs.anthropic.com/en/docs/claude-code/remote) (`/remote`) is tied to Anthropic accounts and infrastructure, optimized for terminal-to-mobile control, and opaque from a security and infrastructure perspective.
+Claude Code's [Remote Control](https://docs.anthropic.com/en/docs/claude-code/remote) (`/remote-control`) is tied to Anthropic accounts and infrastructure, optimized for terminal-to-mobile control, and opaque from a security and infrastructure perspective.
 
 cclink is local-first, self-host-friendly, and composable with your existing SSH/tmux/Tailscale story. You own the keys, you own the transport, you see exactly what crosses the wire.
 
-**Compatible with `/remote`**: use both. cclink handles *which box* runs the session; `/remote` handles *which UI* you control it from.
+**Compatible with `/remote-control`**: use both. cclink handles *which box* runs the session; `/remote-control` handles *which UI* you control it from.
 
 ## License
 
