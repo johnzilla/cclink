@@ -2,6 +2,7 @@ use std::io::{self, IsTerminal, Read, Write};
 use std::path::Path;
 
 use anyhow::Context;
+use zeroize::Zeroizing;
 
 use crate::cli::InitArgs;
 use crate::keys::{fingerprint, store};
@@ -36,8 +37,32 @@ pub fn run_init(args: InitArgs) -> anyhow::Result<()> {
         (kp, "generated")
     };
 
-    // Step 5: Write keypair atomically
-    store::write_keypair_atomic(&keypair, &secret_key_path).context("Failed to write keypair")?;
+    // Step 5: Write keypair — encrypted (default) or plaintext (--no-passphrase)
+    if args.no_passphrase {
+        // Plaintext path (v1.2-compatible)
+        store::write_keypair_atomic(&keypair, &secret_key_path)
+            .context("Failed to write keypair")?;
+    } else {
+        // Encrypted path (v1.3 default)
+        if !io::stdin().is_terminal() {
+            anyhow::bail!("Use --no-passphrase for non-interactive init");
+        }
+        let passphrase = Zeroizing::new(
+            dialoguer::Password::new()
+                .with_prompt("Enter key passphrase (min 8 chars)")
+                .with_confirmation("Confirm passphrase", "Passphrases don't match")
+                .interact()
+                .map_err(|e| anyhow::anyhow!("Passphrase prompt failed: {}", e))?,
+        );
+        if passphrase.len() < 8 {
+            eprintln!("Error: Passphrase must be at least 8 characters");
+            std::process::exit(1);
+        }
+        let seed: [u8; 32] = keypair.secret_key();
+        let envelope = crate::crypto::encrypt_key_envelope(&seed, &passphrase)?;
+        store::write_encrypted_keypair_atomic(&envelope, &secret_key_path)
+            .context("Failed to write encrypted keypair")?;
+    }
 
     // Step 6: Success output
     let pub_key = keypair.public_key();
@@ -50,7 +75,14 @@ pub fn run_init(args: InitArgs) -> anyhow::Result<()> {
     println!("{}", success_verb);
     println!();
     println!("Public Key:  {}", pub_key.to_uri_string());
-    println!("Key file:    {}", secret_key_path.display());
+    if args.no_passphrase {
+        println!("Key file:    {} (plaintext)", secret_key_path.display());
+    } else {
+        println!(
+            "Key file:    {} (passphrase-protected)",
+            secret_key_path.display()
+        );
+    }
 
     println!();
     println!("Next: run 'cclink' to publish your first session handoff.");
@@ -66,9 +98,18 @@ fn prompt_overwrite(existing_key_path: &Path) -> anyhow::Result<bool> {
     }
 
     // Try to load existing key to get a fingerprint identifier
-    let identifier = match pkarr::Keypair::from_secret_key_file(existing_key_path) {
-        Ok(kp) => fingerprint::short_fingerprint(&kp.public_key()),
-        Err(_) => "(unreadable)".to_string(),
+    // If the file starts with the CCLINKEK magic bytes, show "(encrypted)" instead of
+    // falling through to the unreadable fallback.
+    let identifier = if std::fs::read(existing_key_path)
+        .map(|raw| raw.starts_with(b"CCLINKEK"))
+        .unwrap_or(false)
+    {
+        "(encrypted)".to_string()
+    } else {
+        match pkarr::Keypair::from_secret_key_file(existing_key_path) {
+            Ok(kp) => fingerprint::short_fingerprint(&kp.public_key()),
+            Err(_) => "(unreadable)".to_string(),
+        }
     };
 
     eprint!(

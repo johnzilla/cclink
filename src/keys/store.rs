@@ -89,8 +89,6 @@ pub fn read_homeserver() -> anyhow::Result<String> {
 ///
 /// Follows the same atomic-write pattern as `write_keypair_atomic`: write to a temp
 /// file, set permissions, then rename. The envelope bytes are written verbatim (not hex).
-// Plan 02 wires this into `cclink init`; suppress dead_code until then.
-#[allow(dead_code)]
 pub fn write_encrypted_keypair_atomic(envelope: &[u8], dest: &Path) -> anyhow::Result<()> {
     let parent = dest
         .parent()

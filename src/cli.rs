@@ -58,6 +58,10 @@ pub struct InitArgs {
     /// Skip overwrite confirmation prompt
     #[arg(long, short = 'y')]
     pub yes: bool,
+
+    /// Write a plaintext (unencrypted) key file, skipping the passphrase prompt
+    #[arg(long)]
+    pub no_passphrase: bool,
 }
 
 #[derive(Parser)]

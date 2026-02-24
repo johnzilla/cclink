@@ -14,34 +14,26 @@ use std::io::Write;
 use zeroize::Zeroizing;
 
 // ── CCLINKEK binary envelope constants ──────────────────────────────────────
-// Phase 16 wires these into init/load; suppress dead_code until then.
 
 /// Magic header bytes identifying the CCLINKEK key envelope format.
-#[allow(dead_code)]
 const ENVELOPE_MAGIC: &[u8; 8] = b"CCLINKEK";
 
 /// Current version byte for the CCLINKEK envelope format.
-#[allow(dead_code)]
 const ENVELOPE_VERSION: u8 = 0x01;
 
 /// Fixed header length: 8 magic + 1 version + 4 m_cost + 4 t_cost + 4 p_cost + 32 salt = 53 bytes.
-#[allow(dead_code)]
 const ENVELOPE_HEADER_LEN: usize = 53;
 
 /// HKDF info string for key envelope derivation (distinct from cclink-pin-v1).
-#[allow(dead_code)]
 const KEY_HKDF_INFO: &[u8] = b"cclink-key-v1";
 
 /// Default Argon2id memory cost (64 MB) — stored in envelope header on encryption.
-#[allow(dead_code)]
 const KDF_M_COST: u32 = 65536;
 
 /// Default Argon2id iteration count — stored in envelope header on encryption.
-#[allow(dead_code)]
 const KDF_T_COST: u32 = 3;
 
 /// Default Argon2id parallelism — stored in envelope header on encryption.
-#[allow(dead_code)]
 const KDF_P_COST: u32 = 1;
 
 /// Derive the X25519 secret scalar from an Ed25519 keypair.
@@ -218,7 +210,6 @@ pub fn pin_decrypt(ciphertext: &[u8], pin: &str, salt: &[u8; 32]) -> anyhow::Res
 /// Accepts Argon2 parameters as arguments so that `decrypt_key_envelope` can pass the
 /// values decoded from the envelope header (enabling forward compatibility on param upgrades).
 /// HKDF info string `b"cclink-key-v1"` domain-separates this derivation from `pin_derive_key`.
-#[allow(dead_code)]
 fn key_derive_key(
     passphrase: &str,
     salt: &[u8; 32],
@@ -246,8 +237,6 @@ fn key_derive_key(
 }
 
 /// Encrypt an Ed25519 seed (32 bytes) into a self-describing CCLINKEK binary envelope.
-// Phase 16 wires this into `cclink init`; suppress dead_code until then.
-#[allow(dead_code)]
 ///
 /// Generates a random 32-byte salt, derives a key-encryption key from the passphrase
 /// using Argon2id + HKDF-SHA256 (with `"cclink-key-v1"` domain separation), and encrypts
@@ -295,8 +284,6 @@ pub fn encrypt_key_envelope(seed: &[u8; 32], passphrase: &str) -> anyhow::Result
 }
 
 /// Decrypt a CCLINKEK binary envelope back to the original 32-byte Ed25519 seed.
-// Phase 16 wires this into key loading; suppress dead_code until then.
-#[allow(dead_code)]
 ///
 /// Validates the magic header and version byte, decodes Argon2 parameters from the
 /// envelope header (NOT from hardcoded constants — enables forward compatibility),
