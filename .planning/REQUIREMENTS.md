@@ -9,8 +9,8 @@ Requirements for v1.3 Key Security Hardening. Each maps to roadmap phases.
 
 ### Encrypted Key Storage
 
-- [ ] **KEYS-01**: User can create a passphrase-protected keypair with `cclink init` (passphrase prompt with confirmation, min 8 chars)
-- [ ] **KEYS-02**: User can create an unprotected keypair with `cclink init --no-passphrase`
+- [x] **KEYS-01**: User can create a passphrase-protected keypair with `cclink init` (passphrase prompt with confirmation, min 8 chars)
+- [x] **KEYS-02**: User can create an unprotected keypair with `cclink init --no-passphrase`
 - [x] **KEYS-03**: User is prompted for passphrase when any command loads an encrypted keypair
 - [x] **KEYS-04**: User sees clear "Wrong passphrase" error on incorrect passphrase (exit 1, no retry)
 - [x] **KEYS-05**: Encrypted key file uses self-describing format (JSON envelope with version, salt, ciphertext)
@@ -57,8 +57,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| KEYS-01 | Phase 16 | Pending |
-| KEYS-02 | Phase 16 | Pending |
+| KEYS-01 | Phase 16 | Complete |
+| KEYS-02 | Phase 16 | Complete |
 | KEYS-03 | Phase 16 | Complete |
 | KEYS-04 | Phase 16 | Complete |
 | KEYS-05 | Phase 15 | Complete |

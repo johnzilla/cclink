@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-24)
 
 **Core value:** Effortless, secure session handoff between devices: `cclink` on one machine, `cclink pickup` on another, you're back in your session.
-**Current focus:** Phase 16 — Encrypted Key Storage + CLI Integration (in progress)
+**Current focus:** Phase 16 — Encrypted Key Storage + CLI Integration (complete)
 
 ## Current Position
 
-Phase: 16 of 16 in v1.3 (Encrypted Key Storage CLI Integration) — In Progress
-Plan: 1 of 2 in current phase (16-01 complete)
-Status: Phase 16 plan 01 complete — ready for Phase 16 plan 02 (CLI wiring for run_init passphrase prompt)
-Last activity: 2026-02-24 — 16-01 complete: encrypted key store layer (write_encrypted_keypair_atomic, format-detecting load_keypair) with 6 TDD tests
+Phase: 16 of 16 in v1.3 (Encrypted Key Storage CLI Integration) — Complete
+Plan: 2 of 2 in current phase (16-02 complete)
+Status: Phase 16 complete — all v1.3 plans done (encrypted key storage CLI integration shipped)
+Last activity: 2026-02-24 — 16-02 complete: cclink init now prompts for passphrase by default (CCLINKEK encrypted write) with --no-passphrase for plaintext fallback
 
-Progress: [████████░░░░░░░░░░░░░░░░░░░░░░░░░░] 57% (v1.3 — 4 of 7 plans complete)
+Progress: [█████████░░░░░░░░░░░░░░░░░░░░░░░░░] 71% (v1.3 — 5 of 7 plans complete)
 
 ## Performance Metrics
 
@@ -59,17 +59,21 @@ Key decisions from 16-01:
 - load_keypair uses std::fs::read (Vec<u8>) not read_to_string — CCLINKEK envelopes are binary and not valid UTF-8
 - Binary format detection before dispatch: read raw bytes, check magic, branch to format-specific loader
 
+Key decisions from 16-02:
+- eprintln!+exit(1) for passphrase-too-short error (not anyhow::bail!) — consistent with Phase 13 PIN validation pattern, avoids double "Error:" prefix
+- Passphrase length validated AFTER double-entry confirmation — user sees mistake once, not re-prompted
+- --import path flows through same Step 5 branching as generated keys — --no-passphrase controls output encryption regardless of source
+
 ### Pending Todos
 
 None.
 
 ### Blockers/Concerns
 
-- Phase 16: Validate non-interactive terminal guard behavior with piped invocations (e.g., `cclink publish < /dev/null`) during integration testing
-Note: pkarr::Keypair::from_secret_key API confirmed as &[u8;32] — blocker from 14-02 resolved during Phase 15 implementation
+None.
 
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 16-01-PLAN.md — Phase 16 Plan 01 (encrypted key store layer) complete; ready for Phase 16 Plan 02 (CLI wiring for run_init passphrase prompt)
+Stopped at: Completed 16-02-PLAN.md — Phase 16 Plan 02 (CLI wiring for run_init passphrase prompt) complete; v1.3 encrypted key storage feature shipped end-to-end
 Resume file: None

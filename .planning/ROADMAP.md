@@ -56,7 +56,7 @@ Full details: `milestones/v1.2-ROADMAP.md`
 
 - [x] **Phase 14: Memory Zeroization** - Zeroize X25519 scalar, decrypted key bytes, and passphrase/PIN strings from memory after use (completed 2026-02-24)
 - [x] **Phase 15: Encrypted Key Crypto Layer** - Implement the CCLINKEK binary envelope format with encrypt/decrypt functions and unit tests (completed 2026-02-24)
-- [ ] **Phase 16: Encrypted Key Storage and CLI Integration** - Wire passphrase-protected init, format-detecting load, and backward-compatible plaintext fallback into the full user-facing flow
+- [x] **Phase 16: Encrypted Key Storage and CLI Integration** - Wire passphrase-protected init, format-detecting load, and backward-compatible plaintext fallback into the full user-facing flow (completed 2026-02-24)
 
 ## Phase Details
 
@@ -121,4 +121,4 @@ Plans:
 | 13. Code Quality and Security | v1.2 | 2/2 | Complete | 2026-02-24 |
 | 14. Memory Zeroization | 2/2 | Complete    | 2026-02-24 | - |
 | 15. Encrypted Key Crypto Layer | 1/1 | Complete    | 2026-02-24 | - |
-| 16. Encrypted Key Storage and CLI Integration | 1/2 | In Progress|  | - |
+| 16. Encrypted Key Storage and CLI Integration | 2/2 | Complete   | 2026-02-24 | - |
