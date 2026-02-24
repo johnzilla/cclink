@@ -74,3 +74,28 @@
 
 ---
 
+
+## v1.3 Key Security Hardening (Shipped: 2026-02-24)
+
+**Phases:** 14-16 (5 plans) | **Rust LOC:** 4,003 | **Timeline:** 1 day
+
+**Delivered:** Secret key material protected at rest with passphrase-encrypted CCLINKEK envelopes and in memory with automatic zeroization on drop.
+
+**Key accomplishments:**
+- Memory zeroization of all secret key material (X25519 scalars, decrypted key bytes, passphrase/PIN strings) via `Zeroizing<T>` wrappers
+- CCLINKEK binary envelope format with embedded Argon2id params, HKDF-SHA256 domain separation, and age encryption
+- `cclink init` passphrase prompt with confirmation, min 8 chars, and `--no-passphrase` plaintext bypass
+- Transparent format detection in `load_keypair` -- auto-detects encrypted vs plaintext keys, prompts only when needed
+- Full backward compatibility -- existing v1.2 plaintext key files load without any passphrase prompt
+
+**Git range:** `3f46dd2` → `44bc477` (6 files, 583 insertions, 29 deletions)
+
+**Known tech debt:**
+- Age ciphertext size non-deterministic (budget relies on skip_serializing_if)
+- QR code content wrong when `--share` + `--qr` combined
+- Two pre-existing `#[allow(dead_code)]` on homeserver utility functions
+
+**Archive:** `milestones/v1.3-ROADMAP.md`, `milestones/v1.3-REQUIREMENTS.md`
+
+---
+
