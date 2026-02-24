@@ -1,6 +1,6 @@
 # cclink
 
-Secure session handoff for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) between devices, powered by the [PKARR](https://pkarr.org/) Mainline DHT.
+Accountless, DHT-backed, end-to-end encrypted session handoff for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Your Ed25519 key is your identity; the [Mainline DHT](https://pkarr.org/) is your rendezvous. No SaaS, no relay, no logins.
 
 ```
 Machine A                              Machine B
@@ -149,6 +149,14 @@ Modes can be combined: `cclink --burn --pin` creates a PIN-protected, single-use
 **Key principle**: No session content or metadata transits the network in cleartext. The entire payload (session ID, hostname, project path) is encrypted into a single blob. The outer record contains only the ciphertext, timestamps, public key, and flags. The pickup device still needs access to `~/.claude/sessions/` (via shared filesystem, SSH, Tailscale, etc.) to actually resume the session.
 
 **At rest**: Keys are stored in a CCLINKEK encrypted envelope by default. The passphrase is derived via Argon2id (64 MB, 3 iterations) + HKDF-SHA256, then used to encrypt the Ed25519 seed with age. Existing plaintext key files from v1.2 and earlier continue to work without any passphrase prompt.
+
+## Why not just use `/remote`?
+
+Claude Code's [Remote Control](https://docs.anthropic.com/en/docs/claude-code/remote) (`/remote`) is tied to Anthropic accounts and infrastructure, optimized for terminal-to-mobile control, and opaque from a security and infrastructure perspective.
+
+cclink is local-first, self-host-friendly, and composable with your existing SSH/tmux/Tailscale story. You own the keys, you own the transport, you see exactly what crosses the wire.
+
+**Compatible with `/remote`**: use both. cclink handles *which box* runs the session; `/remote` handles *which UI* you control it from.
 
 ## License
 
