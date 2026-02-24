@@ -101,5 +101,5 @@ Plans:
 | 9. PIN-Protected Handoffs | v1.1 | 2/2 | Complete | 2026-02-22 |
 | 10. Pubky Homeserver Transport Fix | v1.1 | 2/2 | Complete | 2026-02-22 |
 | 11. Prerequisites | v1.2 | Complete    | 2026-02-23 | 2026-02-23 |
-| 12. CI Hardening | 1/1 | Complete   | 2026-02-24 | - |
+| 12. CI Hardening | 1/1 | Complete    | 2026-02-24 | - |
 | 13. Code Quality and Security | v1.2 | 0/TBD | Not started | - |
