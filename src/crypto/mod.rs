@@ -402,4 +402,93 @@ mod tests {
             "owner keypair alone must not be able to decrypt PIN-encrypted data"
         );
     }
+
+    // ── Key envelope tests ───────────────────────────────────────────────────
+
+    #[test]
+    fn test_key_envelope_round_trip() {
+        let seed = [42u8; 32];
+        let passphrase = "correct-horse-battery-staple";
+        let blob = encrypt_key_envelope(&seed, passphrase)
+            .expect("encrypt_key_envelope should succeed");
+        let recovered = decrypt_key_envelope(&blob, passphrase)
+            .expect("decrypt_key_envelope should round-trip");
+        assert_eq!(*recovered, seed, "recovered seed must match original");
+    }
+
+    #[test]
+    fn test_key_envelope_magic_and_version() {
+        let seed = [42u8; 32];
+        let blob = encrypt_key_envelope(&seed, "test-passphrase")
+            .expect("encrypt_key_envelope should succeed");
+        assert_eq!(&blob[..8], b"CCLINKEK", "magic bytes must be CCLINKEK");
+        assert_eq!(blob[8], 0x01, "version byte must be 0x01");
+        assert!(blob.len() > 53, "envelope must be longer than 53-byte header");
+    }
+
+    #[test]
+    fn test_key_envelope_params_stored_in_header() {
+        let blob = encrypt_key_envelope(&[1u8; 32], "test")
+            .expect("encrypt should succeed");
+        let m_cost = u32::from_be_bytes(blob[9..13].try_into().unwrap());
+        let t_cost = u32::from_be_bytes(blob[13..17].try_into().unwrap());
+        let p_cost = u32::from_be_bytes(blob[17..21].try_into().unwrap());
+        assert_eq!(m_cost, 65536, "m_cost must be 65536 in header");
+        assert_eq!(t_cost, 3, "t_cost must be 3 in header");
+        assert_eq!(p_cost, 1, "p_cost must be 1 in header");
+    }
+
+    #[test]
+    fn test_key_envelope_wrong_passphrase() {
+        let seed = [42u8; 32];
+        let blob = encrypt_key_envelope(&seed, "correct-passphrase")
+            .expect("encrypt should succeed");
+        let result = decrypt_key_envelope(&blob, "wrong-passphrase");
+        assert!(result.is_err(), "wrong passphrase must return Err");
+        let msg = result.unwrap_err().to_string().to_lowercase();
+        assert!(
+            msg.contains("passphrase") || msg.contains("envelope"),
+            "error should mention passphrase or envelope, got: {}",
+            msg
+        );
+    }
+
+    #[test]
+    fn test_key_envelope_too_short() {
+        let short = vec![0u8; 52];
+        let result = decrypt_key_envelope(&short, "passphrase");
+        assert!(result.is_err(), "too-short envelope must return Err, not panic");
+    }
+
+    #[test]
+    fn test_key_envelope_wrong_magic() {
+        let mut buf = vec![0u8; 60];
+        buf[..8].copy_from_slice(b"WRONGMAG");
+        let result = decrypt_key_envelope(&buf, "passphrase");
+        assert!(result.is_err(), "wrong magic must return Err");
+    }
+
+    #[test]
+    fn test_key_hkdf_info_distinct_from_pin() {
+        let salt = [7u8; 32];
+        let key_kek = key_derive_key("same-passphrase", &salt, 65536, 3, 1)
+            .expect("key derivation should succeed");
+        let pin_key = pin_derive_key("same-passphrase", &salt)
+            .expect("pin derivation should succeed");
+        assert_ne!(
+            *key_kek, *pin_key,
+            "key and PIN derivation must produce different keys (domain separation)"
+        );
+    }
+
+    #[test]
+    fn test_key_derive_key_deterministic() {
+        let salt = [5u8; 32];
+        let key1 = key_derive_key("my-passphrase", &salt, 65536, 3, 1)
+            .expect("first derivation should succeed");
+        let key2 = key_derive_key("my-passphrase", &salt, 65536, 3, 1)
+            .expect("second derivation should succeed");
+        assert_eq!(*key1, *key2, "same inputs must produce same key (deterministic)");
+        assert_ne!(*key1, [0u8; 32], "derived key must not be all zeros");
+    }
 }
