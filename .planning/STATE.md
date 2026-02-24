@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-24)
 ## Current Position
 
 Phase: 14 of 16 in v1.3 (Memory Zeroization)
-Plan: — of — in current phase
-Status: Ready to plan
-Last activity: 2026-02-24 — v1.3 roadmap created (Phases 14-16)
+Plan: 1 of 2 in current phase (14-01 complete)
+Status: In progress
+Last activity: 2026-02-24 — 14-01 complete: Zeroizing wrappers applied to crypto and key store
 
-Progress: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0% (v1.3)
+Progress: [█████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 14% (v1.3 — 1 of 7 plans complete)
 
 ## Performance Metrics
 
@@ -35,6 +35,13 @@ Key decisions relevant to v1.3:
 - Crypto layer before storage layer: Phase 15 must produce tested encrypt/decrypt functions before Phase 16 integrates them
 - Bypass pkarr I/O for encrypted format: pkarr's write_secret_key_file writes hex only; own the read/write lifecycle via keypair.secret_key() -> encrypt -> write
 
+Key decisions from 14-01:
+- Use Zeroizing<[u8;32]> as return type (not a newtype) so callers auto-deref with no changes in pickup/revoke/list
+- Wrap argon2_output and okm internally in pin_derive_key so intermediate secrets are also zeroed on drop
+- Manual byte-by-byte hex decode in load_keypair avoids any intermediate Vec<u8> holding secret bytes on heap
+- from_secret_key_file calls in init.rs (import path) deferred — outside ZERO-01/ZERO-02 scope
+- [Phase 14-memory-zeroization]: Zeroizing<[u8;32]> as return type for secret derivation — auto-deref enables no-change callers
+
 ### Pending Todos
 
 None.
@@ -47,5 +54,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: v1.3 roadmap created -- ready to plan Phase 14
+Stopped at: Completed 14-01-PLAN.md — Zeroizing wrappers applied; ready for 14-02
 Resume file: None
