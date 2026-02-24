@@ -71,11 +71,12 @@ cclink pickup --qr              # show session ID as QR code
 
 ### Init
 
-Generate or import a PKARR keypair.
+Generate or import a PKARR keypair. By default, the key is encrypted with a passphrase (min 8 characters).
 
 ```bash
-cclink init                             # generate a new keypair
-cclink init --import /path/to/key       # import from file
+cclink init                             # generate a passphrase-protected keypair
+cclink init --no-passphrase             # generate an unprotected plaintext keypair
+cclink init --import /path/to/key       # import from file (encrypted by default)
 echo <hex> | cclink init --import -     # import from stdin
 ```
 
@@ -143,9 +144,11 @@ Modes can be combined: `cclink --burn --pin` creates a PIN-protected, single-use
 | Forged handoff record | Dual Ed25519 signature verification (PKARR packet + inner record) |
 | Replay attack | TTL expiry + optional burn-after-read |
 | Intercepted QR/link | PIN mode adds a second factor; burn mode limits the window |
-| Key compromise | Keys stored with 0600 permissions; cclink refuses to read keys with looser perms |
+| Key compromise | Keys encrypted at rest with passphrase (Argon2id + age); 0600 permissions; secret material zeroized from memory after use |
 
 **Key principle**: No session content or metadata transits the network in cleartext. The entire payload (session ID, hostname, project path) is encrypted into a single blob. The outer record contains only the ciphertext, timestamps, public key, and flags. The pickup device still needs access to `~/.claude/sessions/` (via shared filesystem, SSH, Tailscale, etc.) to actually resume the session.
+
+**At rest**: Keys are stored in a CCLINKEK encrypted envelope by default. The passphrase is derived via Argon2id (64 MB, 3 iterations) + HKDF-SHA256, then used to encrypt the Ed25519 seed with age. Existing plaintext key files from v1.2 and earlier continue to work without any passphrase prompt.
 
 ## License
 
