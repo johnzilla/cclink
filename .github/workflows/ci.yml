@@ -15,3 +15,23 @@ jobs:
       - name: Verify no OpenSSL dependency
         run: |
           cargo tree 2>/dev/null | grep -i openssl && echo "ERROR: OpenSSL found in dependency tree" && exit 1 || echo "OK: No OpenSSL dependency"
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo fmt --check
+
+  audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/audit@v1
