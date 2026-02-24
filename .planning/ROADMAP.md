@@ -68,7 +68,10 @@ Full details: `milestones/v1.2-ROADMAP.md`
   1. The derived X25519 secret scalar is wrapped in `Zeroizing<[u8;32]>` and is zeroed when it goes out of scope after publish and pickup
   2. The raw decrypted key file bytes are zeroized from memory after the keypair is parsed
   3. Passphrase and PIN strings collected from user prompts are wrapped in `Zeroizing<String>` and zeroed on drop
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 14-01-PLAN.md -- Add zeroize dep, wrap crypto return types and reimplement load_keypair with zeroizing buffers (ZERO-01, ZERO-02)
+- [ ] 14-02-PLAN.md -- Wrap PIN prompt strings in Zeroizing at call sites in publish.rs and pickup.rs (ZERO-03)
 
 ### Phase 15: Encrypted Key Crypto Layer
 **Goal**: A tested, correct crypto layer can encrypt and decrypt an Ed25519 seed into the CCLINKEK binary envelope format
@@ -111,6 +114,6 @@ Full details: `milestones/v1.2-ROADMAP.md`
 | 11. Prerequisites | v1.2 | 2/2 | Complete | 2026-02-23 |
 | 12. CI Hardening | v1.2 | 1/1 | Complete | 2026-02-24 |
 | 13. Code Quality and Security | v1.2 | 2/2 | Complete | 2026-02-24 |
-| 14. Memory Zeroization | v1.3 | 0/TBD | Not started | - |
+| 14. Memory Zeroization | v1.3 | 0/2 | Not started | - |
 | 15. Encrypted Key Crypto Layer | v1.3 | 0/TBD | Not started | - |
 | 16. Encrypted Key Storage and CLI Integration | v1.3 | 0/TBD | Not started | - |
