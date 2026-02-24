@@ -8,6 +8,63 @@ use owo_colors::{OwoColorize, Stream::Stderr, Stream::Stdout};
 
 use crate::error::CclinkError;
 
+/// Validate PIN strength before encryption.
+///
+/// Rejects PINs that are too short, all-same-character, sequential, or match
+/// a hardcoded blocklist of common words/patterns (NIST 800-63B-4 aligned).
+///
+/// Returns `Ok(())` for valid PINs, or `Err(reason)` with a human-readable
+/// rejection reason for invalid PINs.
+fn validate_pin(pin: &str) -> Result<(), String> {
+    // Rule 1: minimum length
+    let len = pin.len();
+    if len < 8 {
+        return Err(format!("PIN must be at least 8 characters (got {})", len));
+    }
+
+    // Rule 2: all-same character
+    // Safety: len >= 8 so at least one char exists.
+    let first = pin.chars().next().unwrap();
+    if pin.chars().all(|c| c == first) {
+        return Err("PIN rejected: all characters are the same".to_string());
+    }
+
+    // Rule 3: sequential (ascending or descending) pattern
+    let chars: Vec<char> = pin.chars().collect();
+    let is_ascending = chars.windows(2).all(|w| (w[1] as i32) - (w[0] as i32) == 1);
+    let is_descending = chars.windows(2).all(|w| (w[0] as i32) - (w[1] as i32) == 1);
+    if is_ascending || is_descending {
+        return Err("PIN rejected: sequential pattern".to_string());
+    }
+
+    // Rule 4: common word / pattern blocklist (case-insensitive)
+    const COMMON: &[&str] = &[
+        "password",
+        "qwerty",
+        "letmein",
+        "welcome",
+        "monkey",
+        "dragon",
+        "master",
+        "iloveyou",
+        "sunshine",
+        "princess",
+        "football",
+        "baseball",
+        "123456789",
+        "12345678",
+        "87654321",
+        "qwertyui",
+        "asdfghjk",
+    ];
+    let lower = pin.to_lowercase();
+    if COMMON.contains(&lower.as_str()) {
+        return Err("PIN rejected: common word or pattern".to_string());
+    }
+
+    Ok(())
+}
+
 /// Run the publish flow.
 ///
 /// If `cli.session_id` is `Some`, publish that session directly.
@@ -93,12 +150,24 @@ pub fn run_publish(cli: &crate::cli::Cli) -> anyhow::Result<()> {
         .map_err(|e| anyhow::anyhow!("failed to serialize payload: {}", e))?;
 
     let (blob, pin_salt_value) = if cli.pin {
-        // PIN-protected: prompt for PIN, encrypt with PIN-derived key
+        // PIN-protected: prompt for PIN, validate strength, encrypt with PIN-derived key
         let pin = dialoguer::Password::new()
             .with_prompt("Enter PIN for this handoff")
             .with_confirmation("Confirm PIN", "PINs don't match")
             .interact()
             .map_err(|e| anyhow::anyhow!("PIN prompt failed: {}", e))?;
+
+        // Validate PIN strength before any encryption or network call.
+        // Uses eprintln! + process::exit(1) to avoid double-printing via anyhow's
+        // error formatter when the error propagates out of main().
+        if let Err(reason) = validate_pin(&pin) {
+            eprintln!(
+                "{} {}",
+                "Error:".if_supports_color(Stderr, |t| t.red()),
+                reason
+            );
+            std::process::exit(1);
+        }
 
         let (ciphertext, salt) = crate::crypto::pin_encrypt(&payload_bytes, &pin)?;
         let blob = base64::engine::general_purpose::STANDARD.encode(&ciphertext);
@@ -253,37 +322,25 @@ mod tests {
     #[test]
     fn test_pin_sequential_ascending_numeric() {
         let result = validate_pin("12345678");
-        assert_eq!(
-            result,
-            Err("PIN rejected: sequential pattern".to_string())
-        );
+        assert_eq!(result, Err("PIN rejected: sequential pattern".to_string()));
     }
 
     #[test]
     fn test_pin_sequential_ascending_alpha() {
         let result = validate_pin("abcdefgh");
-        assert_eq!(
-            result,
-            Err("PIN rejected: sequential pattern".to_string())
-        );
+        assert_eq!(result, Err("PIN rejected: sequential pattern".to_string()));
     }
 
     #[test]
     fn test_pin_sequential_descending_numeric() {
         let result = validate_pin("87654321");
-        assert_eq!(
-            result,
-            Err("PIN rejected: sequential pattern".to_string())
-        );
+        assert_eq!(result, Err("PIN rejected: sequential pattern".to_string()));
     }
 
     #[test]
     fn test_pin_sequential_descending_alpha() {
         let result = validate_pin("hgfedcba");
-        assert_eq!(
-            result,
-            Err("PIN rejected: sequential pattern".to_string())
-        );
+        assert_eq!(result, Err("PIN rejected: sequential pattern".to_string()));
     }
 
     #[test]
