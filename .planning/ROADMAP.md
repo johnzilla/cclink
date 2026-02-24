@@ -43,7 +43,7 @@ Full details: `milestones/v1.1-ROADMAP.md`
 **Milestone Goal:** Address code review findings -- audit crypto dependencies, harden CI, enforce PIN strength, and clean up tech debt.
 
 - [x] **Phase 11: Prerequisites** - Fix all issues that would cause CI failures before adding enforcement gates
-- [ ] **Phase 12: CI Hardening** - Add clippy, audit, and fmt enforcement jobs to the CI pipeline
+- [x] **Phase 12: CI Hardening** - Add clippy, audit, and fmt enforcement jobs to the CI pipeline (completed 2026-02-24)
 - [ ] **Phase 13: Code Quality and Security** - Enforce PIN length, remove dead code, fix placeholder paths
 
 ## Phase Details
@@ -101,5 +101,5 @@ Plans:
 | 9. PIN-Protected Handoffs | v1.1 | 2/2 | Complete | 2026-02-22 |
 | 10. Pubky Homeserver Transport Fix | v1.1 | 2/2 | Complete | 2026-02-22 |
 | 11. Prerequisites | v1.2 | Complete    | 2026-02-23 | 2026-02-23 |
-| 12. CI Hardening | v1.2 | 0/1 | Not started | - |
+| 12. CI Hardening | 1/1 | Complete   | 2026-02-24 | - |
 | 13. Code Quality and Security | v1.2 | 0/TBD | Not started | - |

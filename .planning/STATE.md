@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-23)
 
 **Core value:** Effortless, secure session handoff between devices: `cclink` on one machine, `cclink pickup` on another, you're back in your session.
-**Current focus:** v1.2 Dependency Audit & Code Quality — Phase 11: Prerequisites
+**Current focus:** v1.2 Dependency Audit & Code Quality — Phase 12: CI Hardening
 
 ## Current Position
 
-Phase: 11 of 13 (Prerequisites)
-Plan: 2 of 2 complete
+Phase: 12 of 13 (CI Hardening)
+Plan: 1 of 1 complete
 Status: Phase complete
-Last activity: 2026-02-23 — Completed 11-02: replaced backoff with backon, cargo audit exits 0
+Last activity: 2026-02-24 — Completed 12-01: added lint and audit jobs to CI workflow
 
-Progress: [██░░░░░░░░] 20% (v1.2)
+Progress: [████░░░░░░] 40% (v1.2)
 
 ## Performance Metrics
 
@@ -52,6 +52,11 @@ Phase 11 Plan 02 decisions (2026-02-23):
 - Used with_total_delay(Some(30s)) in ExponentialBuilder — verified method exists in backon 1.6.0; provides exact parity with original max_elapsed_time: Some(30s)
 - Moved use backon:: to file-level imports (idiomatic vs old function-scoped use backoff:: inside run_pickup)
 
+Phase 12 Plan 01 decisions (2026-02-24):
+- audit job permissions includes issues: write — enables auto-issue-creation for advisories on main branch pushes; safest default
+- No needs: dependencies between test, lint, audit — native GitHub Actions parallelism; failures attributed to correct job in UI
+- lint and audit as top-level jobs (not steps in test job) — clearer failure attribution, satisfies success criterion 3
+
 ### Pending Todos
 
 None.
@@ -62,6 +67,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-23
-Stopped at: Completed 11-02-PLAN.md — replaced backoff with backon, all Phase 11 gates pass (clippy, fmt, audit)
+Last session: 2026-02-24
+Stopped at: Completed 12-01-PLAN.md — added lint and audit CI jobs, all three gates pass locally (clippy, fmt, audit)
 Resume file: None

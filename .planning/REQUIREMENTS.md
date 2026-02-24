@@ -15,9 +15,9 @@ Requirements for v1.2 Dependency Audit & Code Quality. Each maps to roadmap phas
 ### CI Hardening
 
 - [x] **CI-01**: Fix existing clippy warnings in test files (doc comment style `///` → `//` in test files)
-- [ ] **CI-02**: Add `cargo clippy --all-targets -- -D warnings` job to CI pipeline
-- [ ] **CI-03**: Add `cargo audit` job to CI via `actions-rust-lang/audit@v1`
-- [ ] **CI-04**: Add `cargo fmt --check` job to CI pipeline
+- [x] **CI-02**: Add `cargo clippy --all-targets -- -D warnings` job to CI pipeline
+- [x] **CI-03**: Add `cargo audit` job to CI via `actions-rust-lang/audit@v1`
+- [x] **CI-04**: Add `cargo fmt --check` job to CI pipeline
 
 ### PIN Enforcement
 
@@ -58,9 +58,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DEP-01 | Phase 11 | Complete |
 | DEP-02 | Phase 11 | Complete |
 | CI-01 | Phase 11 | Complete |
-| CI-02 | Phase 12 | Pending |
-| CI-03 | Phase 12 | Pending |
-| CI-04 | Phase 12 | Pending |
+| CI-02 | Phase 12 | Complete |
+| CI-03 | Phase 12 | Complete |
+| CI-04 | Phase 12 | Complete |
 | PIN-01 | Phase 13 | Pending |
 | DEBT-01 | Phase 13 | Pending |
 | DEBT-02 | Phase 13 | Pending |
