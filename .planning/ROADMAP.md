@@ -83,7 +83,9 @@ Plans:
   3. `decrypt_key_envelope` with a wrong passphrase returns a clear error (not a panic or corrupt-data error)
   4. Argon2 parameters are read from the file header on decryption, not from hardcoded constants
   5. The HKDF info string `"cclink-key-v1"` is distinct from the PIN derivation info string `"cclink-pin-v1"`
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 15-01-PLAN.md -- TDD: implement encrypt_key_envelope, decrypt_key_envelope, and key_derive_key with CCLINKEK binary envelope format (KEYS-05)
 
 ### Phase 16: Encrypted Key Storage and CLI Integration
 **Goal**: Users can create passphrase-protected keypairs with `cclink init` and all commands transparently prompt for the passphrase when needed, while existing plaintext v1.2 key files continue to work
