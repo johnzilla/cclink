@@ -1,5 +1,6 @@
 use anyhow::Context;
 use std::path::{Path, PathBuf};
+use zeroize::Zeroizing;
 
 use crate::error::CclinkError;
 
@@ -89,6 +90,10 @@ pub fn read_homeserver() -> anyhow::Result<String> {
 /// other than 0600 the load is rejected with a clear error message that includes the
 /// remediation command. This check is cclink's own enforcement (SEC-02) and is not
 /// delegated to pkarr.
+///
+/// Reads the hex key file into a `Zeroizing<String>` so the hex bytes are wiped on drop.
+/// Decodes hex into a `Zeroizing<[u8; 32]>` seed with no intermediate Vec<u8> allocation.
+/// Both zeroizing buffers are dropped (and zeroed) after `from_secret_key` returns.
 pub fn load_keypair() -> anyhow::Result<pkarr::Keypair> {
     let path = secret_key_path()?;
     if !path.exists() {
@@ -96,8 +101,32 @@ pub fn load_keypair() -> anyhow::Result<pkarr::Keypair> {
     }
     // Enforce 0600 permissions before reading key material (SEC-02).
     check_key_permissions(&path)?;
-    pkarr::Keypair::from_secret_key_file(&path)
-        .map_err(|e| anyhow::anyhow!("Failed to load keypair: {}", e))
+
+    // Read the hex-encoded key file into a Zeroizing string so it is wiped on drop.
+    let hex_string = Zeroizing::new(
+        std::fs::read_to_string(&path)
+            .with_context(|| format!("Failed to read key file: {}", path.display()))?,
+    );
+    let hex_trimmed = hex_string.trim();
+
+    // Validate length: a 32-byte secret key encodes to exactly 64 hex characters.
+    if hex_trimmed.len() != 64 {
+        anyhow::bail!(
+            "Invalid secret key file: expected 64 hex chars, got {}",
+            hex_trimmed.len()
+        );
+    }
+
+    // Decode hex into a Zeroizing seed array — no intermediate Vec<u8> allocation.
+    let mut seed = Zeroizing::new([0u8; 32]);
+    for i in 0..32 {
+        let byte_str = &hex_trimmed[i * 2..i * 2 + 2];
+        seed[i] = u8::from_str_radix(byte_str, 16)
+            .with_context(|| format!("Invalid hex byte at position {}: '{}'", i * 2, byte_str))?;
+    }
+
+    // Construct the keypair from the zeroizing seed; seed and hex_string are zeroed on drop.
+    Ok(pkarr::Keypair::from_secret_key(&seed))
 }
 
 pub fn keypair_exists() -> anyhow::Result<bool> {
