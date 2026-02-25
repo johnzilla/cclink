@@ -42,6 +42,56 @@ cclink
 cclink pickup
 ```
 
+## Multi-machine setup
+
+The default `cclink` / `cclink pickup` flow encrypts to **your keypair**. Pickup looks up the record using your public key, so both machines need the same key — or you need to use `--share` or `--pin` to bridge different keys.
+
+### Option 1: Same key on both machines (simplest)
+
+Copy your key from the first machine to the second:
+
+```bash
+# On machine A (where the key already exists)
+cat ~/.pubky/secret_key | ssh machineB 'mkdir -p ~/.pubky && cat > ~/.pubky/secret_key && chmod 600 ~/.pubky/secret_key'
+
+# Or use init --import on machine B
+scp machineA:~/.pubky/secret_key /tmp/key
+cclink init --import /tmp/key
+rm /tmp/key
+```
+
+Now `cclink` and `cclink pickup` work seamlessly across both machines.
+
+### Option 2: `--share` (different keys, encrypt for the other machine)
+
+Each machine keeps its own key. You encrypt specifically for the recipient's public key:
+
+```bash
+# On machine B (the new machine), get its public key
+cclink whoami    # → pk:yro4u8t5...
+
+# On machine A, publish targeting machine B's key
+cclink --share yro4u8t5...
+
+# On machine B, pick up from machine A's key
+cclink whoami    # run on machine A first to get its pubkey
+cclink pickup <machineA-pubkey>
+```
+
+### Option 3: `--pin` (different keys, no key exchange needed)
+
+Protect the handoff with a PIN instead of a keypair. Anyone with the PIN and the publisher's public key can decrypt it:
+
+```bash
+# On machine A
+cclink --pin                        # prompted to set a PIN
+
+# On machine B
+cclink pickup <machineA-pubkey>     # prompted to enter the PIN
+```
+
+Get machine A's public key with `cclink whoami` on machine A.
+
 ## Commands
 
 ### Publish (default)
@@ -159,6 +209,24 @@ Claude Code's [Remote Control](https://docs.anthropic.com/en/docs/claude-code/re
 cclink is local-first, self-host-friendly, and composable with your existing SSH/tmux/Tailscale story. You own the keys, you own the transport, you see exactly what crosses the wire.
 
 **Compatible with `/remote-control`**: use both. cclink handles *which box* runs the session; `/remote-control` handles *which UI* you control it from.
+
+## Troubleshooting
+
+### "Record not found" on pickup
+
+This almost always means **your two machines have different keypairs**. When you ran `cclink init` on each machine, each got a unique key. Pickup looks for a record under *its own* public key — if the record was published under a different key, it won't find it.
+
+**Fix**: See [Multi-machine setup](#multi-machine-setup) above. Either copy the same key to both machines, or use `--share`/`--pin` to bridge different keys.
+
+**Other causes**: the record expired (default TTL is 24 hours), was revoked (`--burn` after first pickup), or DHT propagation hasn't completed yet (retry in a few seconds).
+
+### "This handoff was shared with ..."
+
+You published with `--share <pubkey>` — only the specified recipient can decrypt it. Run `cclink pickup <publisher-pubkey>` on the recipient machine.
+
+### "Incorrect PIN"
+
+The PIN you entered doesn't match the one used during publish. PINs are case-sensitive and must be at least 8 characters.
 
 ## License
 
