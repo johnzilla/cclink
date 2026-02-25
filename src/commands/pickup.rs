@@ -17,6 +17,28 @@ use owo_colors::{OwoColorize, Stream::Stdout};
 
 use crate::util::human_duration;
 
+/// Check whether a session JSONL file exists locally under `~/.claude/projects/`.
+///
+/// The directory structure is `~/.claude/projects/<project_hash>/<session_id>.jsonl`.
+/// We don't know the project hash, so we scan all subdirectories.
+fn session_exists_locally(session_id: &str) -> bool {
+    let Some(home) = dirs::home_dir() else {
+        return false;
+    };
+    let projects_dir = home.join(".claude/projects");
+    let Ok(entries) = std::fs::read_dir(&projects_dir) else {
+        return false;
+    };
+    let target = format!("{}.jsonl", session_id);
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() && path.join(&target).exists() {
+            return true;
+        }
+    }
+    false
+}
+
 /// Launch `claude --resume <session_id>`.
 ///
 /// On Unix, replaces the current process via `exec()` so the shell history entry
@@ -263,7 +285,32 @@ pub fn run_pickup(args: crate::cli::PickupArgs) -> anyhow::Result<()> {
             .map_err(|e| anyhow::anyhow!("QR code render failed: {}", e))?;
     }
 
-    // ── 8. Launch claude --resume ────────────────────────────────────────
+    // ── 8. Pre-flight: verify session exists locally ──────────────────
+    if !session_exists_locally(&session_id) {
+        eprintln!(
+            "{}",
+            format!(
+                "Error: Session {} was published from another machine, but the session \
+                 data doesn't exist locally.",
+                &session_id[..8.min(session_id.len())]
+            )
+            .if_supports_color(Stdout, |t| t.red())
+        );
+        eprintln!();
+        eprintln!(
+            "{}",
+            "claude --resume requires the session files in ~/.claude/projects/ to be \
+             present on this machine. To resume sessions across machines, sync your \
+             ~/.claude/ directory (e.g. via Syncthing, NFS, rsync, or a shared \
+             filesystem over Tailscale/SSH)."
+                .if_supports_color(Stdout, |t| t.yellow())
+        );
+        eprintln!();
+        eprintln!("Session ID: {}", session_id);
+        anyhow::bail!("session data not found locally");
+    }
+
+    // ── 9. Launch claude --resume ────────────────────────────────────────
     println!(
         "{}",
         format!(

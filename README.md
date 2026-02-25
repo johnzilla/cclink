@@ -44,6 +44,8 @@ cclink pickup
 
 ## Multi-machine setup
 
+**Important**: cclink transfers the *session ID*, not the session data. Claude Code stores sessions locally in `~/.claude/projects/`, so the pickup machine needs access to those files. If your machines don't share a filesystem, sync `~/.claude/` via Syncthing, rsync, NFS, or a shared mount over Tailscale/SSH.
+
 The default `cclink` / `cclink pickup` flow encrypts to **your keypair**. Pickup looks up the record using your public key, so both machines need the same key — or you need to use `--share` or `--pin` to bridge different keys.
 
 ### Option 1: Same key on both machines (simplest)
@@ -196,7 +198,7 @@ Modes can be combined: `cclink --burn --pin` creates a PIN-protected, single-use
 | Intercepted QR/link | PIN mode adds a second factor; burn mode limits the window |
 | Key compromise | Keys encrypted at rest with passphrase (Argon2id + age); 0600 permissions; secret material zeroized from memory after use |
 
-**Key principle**: No session content or metadata transits the network in cleartext. The entire payload (session ID, hostname, project path) is encrypted into a single blob. The outer record contains only the ciphertext, timestamps, public key, and flags. The pickup device still needs access to `~/.claude/sessions/` (via shared filesystem, SSH, Tailscale, etc.) to actually resume the session.
+**Key principle**: No session content or metadata transits the network in cleartext. The entire payload (session ID, hostname, project path) is encrypted into a single blob. The outer record contains only the ciphertext, timestamps, public key, and flags. The pickup device still needs access to `~/.claude/projects/` (via shared filesystem, SSH, Tailscale, etc.) to actually resume the session.
 
 **At rest**: Keys are stored in a CCLINKEK encrypted envelope by default. Existing plaintext key files from v1.2 and earlier continue to work without any passphrase prompt.
 
@@ -219,6 +221,10 @@ This almost always means **your two machines have different keypairs**. When you
 **Fix**: See [Multi-machine setup](#multi-machine-setup) above. Either copy the same key to both machines, or use `--share`/`--pin` to bridge different keys.
 
 **Other causes**: the record expired (default TTL is 24 hours), was revoked (`--burn` after first pickup), or DHT propagation hasn't completed yet (retry in a few seconds).
+
+### "Session data doesn't exist locally" / "No conversation found"
+
+The session was published from another machine but the session files aren't present on this one. Claude Code stores sessions in `~/.claude/projects/` and `claude --resume` needs those files locally. Sync your `~/.claude/` directory between machines (Syncthing, rsync, NFS, shared mount over Tailscale/SSH).
 
 ### "This handoff was shared with ..."
 
